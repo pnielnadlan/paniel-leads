@@ -33,6 +33,8 @@ export type Option = {
 export type Question = {
   id: number;
   displayId: string;
+  /** טקסט מבוא רך אופציונלי שמופיע מעל השאלה עצמה ומופרד היררכית. */
+  intro?: string;
   text: string;
   options: Option[];
   conditional?: { onQuestionId: number; whenAnswerId: OptionId };
@@ -246,7 +248,8 @@ export const QUESTIONS: Question[] = [
   {
     id: 13,
     displayId: '13',
-    text: 'הגענו לסוף, למדנו עליכם לא מעט (גם אם לא שמתם לב:)) ויש לנו כמה תובנות לחלוק. אבל רק שאלה אחרונה: בסוף האבחון - מה הכי חשוב לכם לדעת על עצמכם?',
+    intro: 'הגענו לסוף, למדנו עליכם לא מעט (גם אם לא שמתם לב 🙂) ויש לנו כמה תובנות לחלוק.',
+    text: 'בסוף האבחון — מה הכי חשוב לכם לדעת על עצמכם?',
     options: [
       { id: 'A', text: 'האם אני בכיוון בכלל? האם הכסף שלי עובד נכון?', reportFocus: 1 },
       { id: 'B', text: 'האם יש בורות שעלי להיזהר מהן במיוחד? טעויות אני עלול לעשות?', reportFocus: 2 },

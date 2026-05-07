@@ -1,6 +1,6 @@
-/* widget.css V3 — dark premium with glass-morphism */
+/* widget.css V4 — based on detailed feedback round */
 
-/* ────── Outer shell — רקע כהה עם עומק פוטוגרפי ────── */
+/* ────── Outer shell ────── */
 .widget-shell {
   min-height: 100dvh;
   font-family: var(--font-brand);
@@ -11,17 +11,14 @@
   padding: 16px;
   box-sizing: border-box;
   background:
-    /* spotlights צבעוניים שיוצרים עומק */
     radial-gradient(ellipse 80% 60% at 30% 10%, rgba(0, 204, 204, 0.18), transparent 60%),
     radial-gradient(ellipse 70% 60% at 80% 90%, rgba(0, 153, 255, 0.18), transparent 55%),
     radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 102, 153, 0.10), transparent 70%),
-    /* רקע בסיס כהה עם וריאציה עדינה */
     linear-gradient(135deg, #051a2e 0%, #0a2540 50%, #051527 100%);
   position: relative;
   overflow: hidden;
 }
 
-/* טקסטורה עדינה — רשת נקודות נותנת תחושת עומק טכנולוגי */
 .widget-shell::before {
   content: '';
   position: absolute;
@@ -32,7 +29,6 @@
   opacity: 0.6;
 }
 
-/* כרטיס המעטפת — glass-morphism כהה */
 .widget-root {
   width: 100%;
   max-width: 1000px;
@@ -44,8 +40,7 @@
   position: relative;
   z-index: 1;
   border-radius: 24px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -58,14 +53,14 @@
 @media (max-width: 720px) {
   .widget-shell { padding: 0; }
   .widget-root {
-    padding: 24px 20px 28px;
+    padding: 28px 20px 32px;
     border-radius: 0;
     min-height: 100dvh;
     border: none;
   }
 }
 
-/* ────── פס התקדמות עליון — זוהר ────── */
+/* ────── Top progress bar ────── */
 .top-progress {
   position: absolute;
   top: 0;
@@ -81,9 +76,7 @@
   height: 100%;
   background: linear-gradient(90deg, #00cccc, #0099ff);
   transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 0 8px rgba(0, 204, 204, 0.6),
-    0 0 16px rgba(0, 153, 255, 0.4);
+  box-shadow: 0 0 8px rgba(0, 204, 204, 0.6), 0 0 16px rgba(0, 153, 255, 0.4);
 }
 
 /* ────── מסך כללי ────── */
@@ -100,21 +93,21 @@
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
-/* ────── Intro screen ────── */
+/* ────── Intro screen — ממורכז במלואו ────── */
 .screen-intro {
-  align-items: flex-start;
-  justify-content: center;
-  text-align: right;
-  gap: 28px;
+  align-items: center;          /* מרכז אופקי */
+  justify-content: center;      /* מרכז אנכי */
+  text-align: center;           /* טקסט ממורכז */
+  gap: 32px;
 }
 
 .intro-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 18px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 700;
   color: #7dd3fc;
   background: rgba(0, 204, 204, 0.10);
   border-radius: 999px;
@@ -125,11 +118,11 @@
 
 .intro-eyebrow::before {
   content: '';
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #00cccc;
-  box-shadow: 0 0 12px #00cccc, 0 0 4px #00cccc;
+  box-shadow: 0 0 12px #00cccc;
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -139,26 +132,30 @@
 }
 
 .intro-title {
-  font-size: clamp(38px, 5.5vw, 56px);
+  font-size: clamp(42px, 6vw, 60px);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.08;
   color: #ffffff;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   text-shadow: 0 2px 30px rgba(0, 153, 255, 0.25);
 }
 
+/* "אנחנו שואלים..." — פי 2 גדול ועבה יותר */
 .intro-text {
-  font-size: 18px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.75);
-  max-width: 640px;
+  font-size: clamp(20px, 2.4vw, 26px);
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 720px;
   margin: 0;
-  font-weight: 400;
+  font-weight: 500;
 }
 
+/* כפתור ה-CTA הראשי באינטרו — רחב פי 4 */
 .screen-intro .btn-primary {
-  margin-top: 12px;
+  margin-top: 14px;
+  min-width: 360px;
+  justify-content: center;
 }
 
 /* ────── Question screen ────── */
@@ -171,31 +168,46 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #7dd3fc;
   letter-spacing: 0.10em;
   align-self: flex-start;
-  padding: 7px 14px;
+  padding: 8px 16px;
   background: rgba(0, 153, 255, 0.10);
   border-radius: 999px;
   border: 1px solid rgba(0, 153, 255, 0.20);
 }
 
+/* טקסט המבוא של ש' 13 — ממורכז, היררכיה שונה מהשאלה */
+.q-intro {
+  font-size: clamp(16px, 1.7vw, 18px);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.6;
+  margin: 4px 0 8px 0;
+  text-align: center;
+  font-style: normal;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
 .q-text {
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 700;
-  line-height: 1.32;
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 800;
+  line-height: 1.3;
   color: #ffffff;
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
 }
 
 .q-subtitle {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 500;
   color: #93c5fd;
-  font-style: normal;
   margin: -10px 0 0 0;
   padding: 12px 16px;
   background: rgba(0, 153, 255, 0.08);
@@ -221,26 +233,26 @@
   .options-grid-2 { grid-template-columns: 1fr; }
 }
 
+/* אופציה — טקסט גדול יותר ובמשקל מדיום */
 .option {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   background: rgba(255, 255, 255, 0.04);
   border: 1.5px solid rgba(255, 255, 255, 0.10);
   border-radius: 14px;
   font-family: inherit;
-  font-size: 16.5px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.92);
+  font-size: 18px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.96);
   text-align: right;
   cursor: pointer;
   transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
-  font-weight: 400;
+  font-weight: 500;
   position: relative;
   backdrop-filter: blur(8px);
-  /* stagger animation לאופציות */
   animation: optionSlideIn 360ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
@@ -256,113 +268,123 @@
 }
 
 .option:hover {
-  border-color: rgba(0, 204, 204, 0.45);
-  background: rgba(0, 204, 204, 0.06);
+  border-color: rgba(0, 204, 204, 0.55);
+  background: rgba(0, 204, 204, 0.08);
   transform: translateY(-2px);
-  box-shadow:
-    0 8px 24px -8px rgba(0, 204, 204, 0.3),
-    0 0 0 1px rgba(0, 204, 204, 0.1);
+  box-shadow: 0 8px 24px -8px rgba(0, 204, 204, 0.35);
 }
 
 .option-selected {
   border-color: #00cccc;
-  background: linear-gradient(135deg, rgba(0, 204, 204, 0.12) 0%, rgba(0, 153, 255, 0.08) 100%);
-  box-shadow:
-    0 0 0 4px rgba(0, 204, 204, 0.15),
-    0 12px 32px -8px rgba(0, 204, 204, 0.4);
-  font-weight: 500;
+  background: linear-gradient(135deg, rgba(0, 204, 204, 0.14) 0%, rgba(0, 153, 255, 0.10) 100%);
+  box-shadow: 0 0 0 4px rgba(0, 204, 204, 0.18), 0 12px 32px -8px rgba(0, 204, 204, 0.45);
+  font-weight: 600;
   color: #ffffff;
   transform: translateY(-2px);
 }
 
+/* האות (א/ב/ג) — צבעונית כברירת מחדל, לא מחכה ל-hover */
 .option-marker {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, rgba(0, 204, 204, 0.20) 0%, rgba(0, 153, 255, 0.15) 100%);
+  color: #7dd3fc;
   font-weight: 800;
-  font-size: 16px;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  font-size: 18px;
+  border: 1.5px solid rgba(0, 204, 204, 0.40);
   transition: all 220ms ease;
   font-family: inherit;
+  text-shadow: 0 0 12px rgba(0, 204, 204, 0.5);
 }
 
 .option:hover .option-marker {
-  border-color: rgba(0, 204, 204, 0.4);
-  color: #7dd3fc;
+  border-color: rgba(0, 204, 204, 0.70);
+  background: linear-gradient(135deg, rgba(0, 204, 204, 0.30) 0%, rgba(0, 153, 255, 0.22) 100%);
+  color: #ccfbf1;
 }
 
 .option-selected .option-marker {
   background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%);
   color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 4px 16px rgba(0, 204, 204, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  box-shadow: 0 4px 16px rgba(0, 204, 204, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  text-shadow: none;
 }
 
 .option-text { flex: 1; }
 
-/* ────── Action buttons ────── */
+/* ────── Action buttons — full-width 50/50 ────── */
 .q-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: stretch;
+  gap: 14px;
   margin-top: 22px;
-  min-height: 56px;
+  min-height: 60px;
 }
 
-.q-actions-spacer { flex: 1; }
+/* כשיש גם חזרה וגם הבא — חצי חצי */
+.q-actions .btn-primary,
+.q-actions .btn-ghost {
+  flex: 1 1 50%;
+  justify-content: center;
+}
 
+/* כשרק "הבא" קיים (שאלה ראשונה) — נשאר ברוחב מלא */
+.q-actions:has(.btn-ghost) .btn-primary { flex: 1 1 50%; }
+
+/* ────── כפתורים — ללא ארטיפקט בפינה ────── */
 .btn-primary,
 .btn-ghost {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 28px;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 32px;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 19px;          /* גדול פי כמעט 2 */
   font-weight: 700;
-  border-radius: 12px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #00cccc 0%, #0099ff 70%, #006699 100%);
+  background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%);
   color: #ffffff;
   box-shadow:
-    0 8px 24px -4px rgba(0, 204, 204, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-    0 -2px 0 rgba(0, 0, 0, 0.2) inset;
+    0 8px 24px -4px rgba(0, 204, 204, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.10) inset;
   position: relative;
   overflow: hidden;
 }
 
-.btn-primary::before {
+.btn-primary::after {
+  /* גליטר עדין שמופיע ב-hover, ללא קצוות שבורים */
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, transparent 60%);
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 220ms ease;
+  pointer-events: none;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow:
-    0 14px 32px -4px rgba(0, 204, 204, 0.65),
-    0 0 0 1px rgba(255, 255, 255, 0.15) inset,
-    0 -2px 0 rgba(0, 0, 0, 0.2) inset;
+    0 14px 32px -4px rgba(0, 204, 204, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
 }
 
-.btn-primary:hover:not(:disabled)::before { opacity: 1; }
+.btn-primary:hover:not(:disabled)::after { opacity: 1; }
 
 .btn-primary:active:not(:disabled) { transform: translateY(-1px); }
 
@@ -371,29 +393,39 @@
   color: rgba(255, 255, 255, 0.3);
   cursor: not-allowed;
   box-shadow: none;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ה-ghost שדרגתי לכפתור מלא בעיצוב, רק עם רקע שונה — ככה הוא משתלב 50/50 */
 .btn-ghost {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.55);
-  font-weight: 500;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 600;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
 }
 
 .btn-ghost:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
 }
 
+/* כפתור Large — מסך אינטרו / שליחה */
 .btn-lg {
-  padding: 18px 40px;
-  font-size: 18px;
-  border-radius: 14px;
+  padding: 22px 56px;
+  font-size: 22px;          /* גדול */
+  font-weight: 800;
+  border-radius: 16px;
 }
 
+/* החץ עבה יותר — משתמשים בתו chevron מ-Apple SF style */
 .btn-arrow {
-  font-size: 20px;
+  font-size: 24px;
+  font-weight: 900;
   line-height: 1;
+  display: inline-block;
   transform: scaleX(-1);
   margin-top: 1px;
 }
@@ -408,16 +440,11 @@
   gap: 32px;
 }
 
-.loading-spinner {
-  width: 80px;
-  height: 80px;
-  position: relative;
-}
+.loading-spinner { width: 84px; height: 84px; position: relative; }
 
 .loading-spinner-circle {
-  width: 100%;
-  height: 100%;
-  border: 4px solid rgba(255, 255, 255, 0.08);
+  width: 100%; height: 100%;
+  border: 5px solid rgba(255, 255, 255, 0.08);
   border-top-color: #00cccc;
   border-right-color: #0099ff;
   border-radius: 50%;
@@ -428,8 +455,8 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .loading-message {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   color: #ffffff;
   margin: 0;
   min-height: 1.5em;
@@ -437,8 +464,7 @@
 }
 
 .progress-bar-wrap {
-  width: 100%;
-  max-width: 400px;
+  width: 100%; max-width: 400px;
   height: 8px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
@@ -453,26 +479,27 @@
   box-shadow: 0 0 16px rgba(0, 204, 204, 0.6);
 }
 
-/* ────── Form screens (email, name) ────── */
+/* ────── Form screens ────── */
 .screen-form {
   align-items: stretch;
   justify-content: center;
-  gap: 22px;
-  max-width: 580px;
+  gap: 26px;
+  max-width: 640px;
   margin: 0 auto;
   width: 100%;
+  text-align: center;
 }
 
 .form-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: #00cccc;
   letter-spacing: 0.04em;
-  align-self: flex-start;
-  padding: 7px 16px;
+  align-self: center;
+  padding: 8px 18px;
   background: rgba(0, 204, 204, 0.10);
   border-radius: 999px;
   border: 1px solid rgba(0, 204, 204, 0.25);
@@ -480,41 +507,55 @@
 }
 
 .form-title {
-  font-size: 36px;
+  font-size: clamp(32px, 4vw, 44px);
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   line-height: 1.15;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.018em;
 }
 
+/* ה-help הקריטי — קופסה ענקית בולטת ממורכזת */
 .form-help {
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.92);
+  font-size: 19px;
+  color: #ffffff;
   margin: 0;
-  line-height: 1.6;
-  padding: 18px 22px;
-  background: linear-gradient(135deg, rgba(0, 204, 204, 0.10) 0%, rgba(0, 153, 255, 0.06) 100%);
-  border-radius: 14px;
-  border-right: 4px solid #00cccc;
-  font-weight: 500;
-  border-top: 1px solid rgba(0, 204, 204, 0.15);
-  border-bottom: 1px solid rgba(0, 204, 204, 0.15);
-  border-left: 1px solid rgba(0, 204, 204, 0.15);
+  line-height: 1.55;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, rgba(0, 204, 204, 0.16) 0%, rgba(0, 153, 255, 0.10) 100%);
+  border-radius: 18px;
+  border: 1.5px solid rgba(0, 204, 204, 0.40);
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 40px rgba(0, 204, 204, 0.15),
+    0 8px 24px -8px rgba(0, 153, 255, 0.25);
+}
+
+.form-help::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(0, 204, 204, 0.18), transparent 70%);
+  pointer-events: none;
 }
 
 .form-input {
   width: 100%;
-  padding: 18px 20px;
+  padding: 20px 22px;
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
-  font-size: 18px;
+  font-size: 19px;
   font-family: inherit;
   color: #ffffff;
   background: rgba(255, 255, 255, 0.04);
   transition: all 200ms ease;
   box-sizing: border-box;
   backdrop-filter: blur(8px);
+  text-align: right;
 }
 
 .form-input::placeholder { color: rgba(255, 255, 255, 0.35); }
@@ -527,19 +568,20 @@
 }
 
 .screen-form .btn-primary {
-  align-self: flex-end;
+  align-self: center;
   margin-top: 6px;
+  min-width: 280px;
 }
 
 /* ────── Insights screen ────── */
 .screen-insights {
-  gap: 18px;
+  gap: 22px;
   justify-content: flex-start;
   padding-top: 14px;
 }
 
 .insights-title {
-  font-size: 32px;
+  font-size: clamp(28px, 3.6vw, 38px);
   font-weight: 800;
   color: #ffffff;
   margin: 0;
@@ -547,96 +589,240 @@
   line-height: 1.15;
 }
 
-.insights-title .insights-name {
+/* רק השם בגרדיאנט; הפסיק נשאר לבן */
+.insights-name {
   background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  font-weight: 800;
 }
 
 .insights-intro {
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.78);
-  line-height: 1.6;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.55;
   margin: 0;
+  font-weight: 500;
 }
 
-.teasers-list {
-  list-style: none;
-  padding: 0;
+/* ─── Teaser carousel — כרטיסיות עם אפקט ערימה ─── */
+.teaser-carousel {
+  position: relative;
   margin: 8px 0;
+  user-select: none;
+}
+
+.teaser-stage {
+  position: relative;
+  height: 200px;
+  perspective: 1200px;
+}
+
+.teaser-card {
+  position: absolute;
+  inset: 0;
+  margin: 0 auto;
+  max-width: 600px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1.5px solid rgba(0, 204, 204, 0.35);
+  border-radius: 18px;
+  padding: 28px 32px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.teaser-item {
-  display: flex;
-  align-items: flex-start;
+  justify-content: center;
   gap: 14px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-right: 3px solid #00cccc;
-  border-radius: 12px;
-  font-size: 15.5px;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.92);
-  transition: all 220ms ease;
-  backdrop-filter: blur(8px);
+  transition: transform 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 420ms ease, box-shadow 420ms ease;
+  backdrop-filter: blur(12px);
+  box-sizing: border-box;
+  cursor: pointer;
 }
 
-.teaser-item:hover {
-  transform: translateX(-3px);
-  border-right-color: #0099ff;
-  background: rgba(0, 153, 255, 0.06);
+/* ערימה: הכרטיסיות שכבר ראינו (לפני הפעילה) — מציצות מימין+מתחת
+   הזחות קטנות כדי שהערימה לא תיראה צפופה */
+.teaser-card[data-pos="active"] {
+  transform: translate(0, 0) scale(1);
+  opacity: 1;
+  z-index: 5;
+  box-shadow:
+    0 24px 60px -10px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 204, 204, 0.25),
+    0 0 60px rgba(0, 204, 204, 0.18);
+  border-color: rgba(0, 204, 204, 0.6);
 }
 
-.teaser-bullet {
-  color: #00cccc;
-  font-weight: 800;
-  flex-shrink: 0;
-  font-size: 20px;
-  line-height: 1.3;
-  transform: scaleX(-1);
-  text-shadow: 0 0 10px rgba(0, 204, 204, 0.5);
+.teaser-card[data-pos="behind-1"] {
+  transform: translate(8px, 8px) scale(0.97);
+  opacity: 0.85;
+  z-index: 4;
+  filter: brightness(0.85);
 }
 
-.teaser-text { flex: 1; }
-
-.insights-cta-text {
-  font-size: 16.5px;
-  color: rgba(255, 255, 255, 0.95);
-  line-height: 1.6;
-  margin: 8px 0 0 0;
-  padding: 22px 26px;
-  background:
-    linear-gradient(135deg, rgba(0, 204, 204, 0.15) 0%, rgba(0, 153, 255, 0.10) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(0, 204, 204, 0.30);
-  font-weight: 500;
-  position: relative;
-  overflow: hidden;
+.teaser-card[data-pos="behind-2"] {
+  transform: translate(16px, 14px) scale(0.94);
+  opacity: 0.6;
+  z-index: 3;
+  filter: brightness(0.7);
 }
 
-.insights-cta-text::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(0, 204, 204, 0.15), transparent 70%);
+.teaser-card[data-pos="behind-3"] {
+  transform: translate(24px, 20px) scale(0.91);
+  opacity: 0.4;
+  z-index: 2;
+  filter: brightness(0.55);
+}
+
+.teaser-card[data-pos="behind-4"] {
+  transform: translate(32px, 26px) scale(0.88);
+  opacity: 0.25;
+  z-index: 1;
+  filter: brightness(0.45);
+}
+
+/* כרטיסיות שעוד לא ראינו — מציצות משמאל (כיוון "הבא" ב-RTL) */
+.teaser-card[data-pos="next"] {
+  transform: translate(-340px, 0) scale(0.95);
+  opacity: 0.25;
+  z-index: 0;
+  filter: brightness(0.6) blur(2px);
   pointer-events: none;
 }
 
-.insights-cta-text strong {
-  color: #00cccc;
+.teaser-card[data-pos="hidden-left"] {
+  transform: translate(-700px, 0) scale(0.9);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.teaser-card-num {
+  font-size: 13px;
   font-weight: 800;
-  display: block;
-  margin-bottom: 6px;
-  font-size: 18px;
-  text-shadow: 0 0 16px rgba(0, 204, 204, 0.4);
+  color: #00cccc;
+  letter-spacing: 0.10em;
+  text-transform: none;
+  text-shadow: 0 0 12px rgba(0, 204, 204, 0.5);
+}
+
+.teaser-card-text {
+  font-size: 19px;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* פסי ניווט (חיצים + נקודות) */
+.teaser-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.teaser-arrow {
+  width: 44px; height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms ease;
+  font-family: inherit;
+}
+
+.teaser-arrow:hover:not(:disabled) {
+  background: rgba(0, 204, 204, 0.15);
+  border-color: rgba(0, 204, 204, 0.5);
+  transform: scale(1.08);
+}
+
+.teaser-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.teaser-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.teaser-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 220ms ease;
+}
+
+.teaser-dot:hover { background: rgba(0, 204, 204, 0.5); }
+
+.teaser-dot-active {
+  background: linear-gradient(135deg, #00cccc, #0099ff);
+  width: 28px;
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(0, 204, 204, 0.6);
+}
+
+/* ─── CTA לפגישה — כותרת ענקית ─── */
+.insights-cta {
+  position: relative;
+  margin-top: 14px;
+  padding: 32px 36px;
+  background: linear-gradient(135deg, rgba(0, 204, 204, 0.18) 0%, rgba(0, 153, 255, 0.12) 100%);
+  border-radius: 20px;
+  border: 1.5px solid rgba(0, 204, 204, 0.45);
+  overflow: hidden;
+  box-shadow:
+    0 0 60px rgba(0, 204, 204, 0.15),
+    0 12px 32px -8px rgba(0, 153, 255, 0.3);
+}
+
+.insights-cta::before {
+  content: '';
+  position: absolute;
+  top: -60%; right: -20%;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0, 204, 204, 0.22), transparent 70%);
+  pointer-events: none;
+}
+
+.insights-cta::after {
+  content: '';
+  position: absolute;
+  bottom: -50%; left: -10%;
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(0, 153, 255, 0.20), transparent 70%);
+  pointer-events: none;
+}
+
+.insights-cta-title {
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.015em;
+  position: relative;
+  text-shadow: 0 0 24px rgba(0, 204, 204, 0.4);
+}
+
+.insights-cta-body {
+  font-size: 17.5px;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.65;
+  margin: 0;
+  font-weight: 500;
+  position: relative;
 }
 
 .checkboxes {
@@ -650,16 +836,17 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   background: rgba(255, 255, 255, 0.04);
   border: 1.5px solid rgba(255, 255, 255, 0.10);
   border-radius: 14px;
   cursor: pointer;
   transition: all 200ms ease;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.92);
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.96);
   position: relative;
   backdrop-filter: blur(8px);
+  font-weight: 500;
 }
 
 .checkbox-row:hover {
@@ -675,22 +862,17 @@
   color: #ffffff;
 }
 
-.checkbox-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
+.checkbox-input { position: absolute; opacity: 0; pointer-events: none; }
 
 .checkbox-box {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
+  width: 28px; height: 28px;
+  border-radius: 9px;
   border: 1.5px solid rgba(255, 255, 255, 0.20);
   background: rgba(255, 255, 255, 0.04);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #ffffff;
   flex-shrink: 0;
@@ -700,14 +882,15 @@
 .checkbox-checked .checkbox-box {
   background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%);
   border-color: transparent;
-  box-shadow: 0 4px 16px rgba(0, 204, 204, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 204, 204, 0.55);
 }
 
-.checkbox-label { flex: 1; font-weight: 500; }
+.checkbox-label { flex: 1; }
 
 .screen-insights > .btn-primary {
   align-self: center;
-  margin-top: 10px;
+  margin-top: 12px;
+  min-width: 320px;
 }
 
 .submit-error {
@@ -734,12 +917,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 110px;
-  height: 110px;
+  width: 120px; height: 120px;
   border-radius: 50%;
   background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%);
   color: #ffffff;
-  font-size: 56px;
+  font-size: 60px;
   font-weight: 700;
   margin-bottom: 12px;
   box-shadow:
@@ -770,36 +952,45 @@
 }
 
 .success-title {
-  font-size: 36px;
+  font-size: clamp(32px, 4vw, 42px);
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   letter-spacing: -0.015em;
   line-height: 1.2;
-  max-width: 560px;
+  max-width: 600px;
 }
 
 .success-text {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.78);
+  font-size: 19px;
+  color: rgba(255, 255, 255, 0.82);
   margin: 0;
   line-height: 1.55;
   max-width: 480px;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .success-email {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: rgba(0, 204, 204, 0.10);
-  border: 1px solid rgba(0, 204, 204, 0.30);
+  padding: 10px 20px;
+  background: rgba(0, 204, 204, 0.12);
+  border: 1.5px solid rgba(0, 204, 204, 0.40);
   border-radius: 999px;
   color: #7dd3fc;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   font-family: 'Helvetica Neue', Arial, sans-serif;
   direction: ltr;
   margin-top: 4px;
+  box-shadow: 0 0 20px rgba(0, 204, 204, 0.2);
+}
+
+/* ────── Confetti container ────── */
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
 }

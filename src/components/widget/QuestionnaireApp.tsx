@@ -12,7 +12,7 @@
 //   - תשובה נבחרת מודגשת ויזואלית עד הלחיצה על "הבא"
 //   - צבעי המותג: Prussian Blue, Baltic Blue, Strong Cyan, Dodger Blue
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   QUESTIONS,
   type OptionId,
@@ -300,6 +300,8 @@ function QuestionScreen({
   return (
     <div className="screen screen-question" key={question.id}>
       <div className="q-counter">שאלה {progress} מתוך 13</div>
+      {/* מבוא רך נפרד היררכית מהשאלה (לדוגמה ש' 13) */}
+      {question.intro && <p className="q-intro">{question.intro}</p>}
       <h2 className="q-text">{question.text}</h2>
       {conditionalSubtitle && (
         <div className="q-subtitle">("{conditionalSubtitle}")</div>
@@ -321,7 +323,6 @@ function QuestionScreen({
             חזרה
           </button>
         )}
-        <div className="q-actions-spacer" />
         <button className="btn-primary" onClick={onNext} disabled={!selected}>
           הבא
           <span className="btn-arrow">‹</span>
@@ -411,12 +412,49 @@ function EmailScreen({
   onNext: () => void;
 }) {
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  // קונפטי חוגג שמופיע פעם אחת כשהמסך הזה נטען (אחרי שסיימת לענות על השאלון)
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { default: confetti } = await import('canvas-confetti');
+        if (cancelled) return;
+        // אקדח קונפטי משני צדדים
+        const fire = (originX: number) =>
+          confetti({
+            particleCount: 70,
+            spread: 80,
+            startVelocity: 45,
+            angle: originX < 0.5 ? 60 : 120,
+            origin: { x: originX, y: 0.6 },
+            colors: ['#00cccc', '#0099ff', '#7dd3fc', '#ffffff'],
+            zIndex: 9999,
+            scalar: 0.9,
+          });
+        fire(0.2);
+        fire(0.8);
+        setTimeout(() => {
+          if (!cancelled) {
+            fire(0.35);
+            fire(0.65);
+          }
+        }, 250);
+      } catch {
+        // אם הקונפטי נכשל בטעינה — לא שובר את המסך
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="screen screen-form">
-      <div className="form-eyebrow">זה מוכן!</div>
+      <div className="form-eyebrow">🎉 זה מוכן!</div>
       <h2 className="form-title">מה המייל שלך?</h2>
       <p className="form-help">
-        הדוח המלא יישלח אליך במייל, וגם — מיד נשתף כאן 5 כותרות-תובנות משמעותיות מתוך הדוח המלא.
+        הדוח המלא יישלח אליך במייל, וגם — <strong>מיד נשתף כאן</strong> 5 כותרות-תובנות משמעותיות מתוך הדוח המלא.
       </p>
       <input
         type="email"
@@ -493,23 +531,23 @@ function InsightsScreen({
 }) {
   return (
     <div className="screen screen-insights">
+      {/* הפסיק נשאר מחוץ לספאן הצבעוני */}
       <h2 className="insights-title">
         מעולה <span className="insights-name">{fullName}</span>,
       </h2>
       <p className="insights-intro">
         הדוח המפורט שלנו יישלח אליך בדקות הקרובות, ובנתיים — הנה 5 "כותרות" מתוך הדוח:
       </p>
-      <ul className="teasers-list">
-        {teasers.map((t, i) => (
-          <li key={i} className="teaser-item">
-            <span className="teaser-bullet">›</span>
-            <span className="teaser-text">{t}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="insights-cta-text">
-        <strong>התובנות שקיבלת עכשיו הן רק ההתחלה.</strong> בפגישת אפיון נוכל לבדוק יחד איך הנתונים, ההון והמטרות שלכם מתחברים לעסקה אמיתית — בלי לנחש, בלי להמר, ובלי להיכנס למהלך שלא מתאים לכם.
-      </p>
+
+      <TeaserCarousel teasers={teasers} />
+
+      <div className="insights-cta">
+        <h3 className="insights-cta-title">אבל התובנות האלו הן רק ההתחלה...</h3>
+        <p className="insights-cta-body">
+          רוצים באמת להשקיע בעתיד שלכם כמו שצריך? בואו לשבת איתנו לפגישת אפיון מקיפה ונוכל לבדוק יחד איך הנתונים, ההון והמטרות שלכם מתחברים לתוכנית אסטרטגית ארוכת טווח להגדלת ההון שלכם.
+        </p>
+      </div>
+
       <div className="checkboxes">
         <CheckboxRow
           label="אשמח שתחזרו אלי לצורך קביעת פגישה"
@@ -532,6 +570,83 @@ function InsightsScreen({
       {submitError && (
         <p className="submit-error">{submitError}</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * קרוסלה של 5 תובנות עם אפקט "ערימה":
+ * - הכרטיסיה הפעילה במרכז
+ * - כרטיסיות שכבר ראינו נערמות מאחורי הפעילה (הזחה רק 8px ימינה+למטה)
+ * - הכרטיסיה הבאה מציצה משמאל (כיוון "הבא" ב-RTL)
+ * - דקות-ניווט: חיצים + נקודות, לחיצה על נקודה קופצת ישירות
+ */
+function TeaserCarousel({ teasers }: { teasers: string[] }) {
+  const [active, setActive] = useState(0);
+  const total = teasers.length;
+  const goPrev = () => setActive((i) => Math.max(0, i - 1));
+  const goNext = () => setActive((i) => Math.min(total - 1, i + 1));
+
+  return (
+    <div className="teaser-carousel">
+      <div className="teaser-stage">
+        {teasers.map((t, i) => {
+          const offset = i - active;
+          let pos: string;
+          if (offset === 0) pos = 'active';
+          else if (offset < 0) {
+            // כבר ראינו — נערמת מאחורי הפעילה
+            const depth = Math.min(Math.abs(offset), 4);
+            pos = `behind-${depth}`;
+          } else if (offset === 1) {
+            pos = 'next';
+          } else {
+            pos = 'hidden-left';
+          }
+          return (
+            <div
+              key={i}
+              className="teaser-card"
+              data-pos={pos}
+              onClick={() => offset !== 0 && setActive(i)}
+              role="button"
+              tabIndex={offset === 0 ? -1 : 0}
+            >
+              <div className="teaser-card-num">תובנה {i + 1} מתוך {total}</div>
+              <p className="teaser-card-text">{t}</p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="teaser-nav">
+        {/* חיצים מותאמים ל-RTL: prev = ימינה, next = שמאלה */}
+        <button
+          className="teaser-arrow"
+          onClick={goPrev}
+          disabled={active === 0}
+          aria-label="הקודם"
+        >
+          ›
+        </button>
+        <div className="teaser-dots">
+          {teasers.map((_, i) => (
+            <button
+              key={i}
+              className={`teaser-dot ${i === active ? 'teaser-dot-active' : ''}`}
+              onClick={() => setActive(i)}
+              aria-label={`תובנה ${i + 1}`}
+            />
+          ))}
+        </div>
+        <button
+          className="teaser-arrow"
+          onClick={goNext}
+          disabled={active === total - 1}
+          aria-label="הבא"
+        >
+          ‹
+        </button>
+      </div>
     </div>
   );
 }
