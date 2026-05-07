@@ -48,6 +48,11 @@ type AppState = {
   submitError: string | null;
 };
 
+// אם המשתמש סימן "רוצים פגישה" — מעבירים אותו לעמוד תודה במלוא הדף.
+// העמוד נמצא על pnielnadlan.co.il (דומיין אחר), לכן window.top.location
+// (cross-origin top navigation מותרת ב-write).
+const MEETING_THANKYOU_URL = 'https://pnielnadlan.co.il/t/';
+
 const INITIAL_STATE: AppState = {
   screen: 'intro',
   answers: new Map(),
@@ -196,6 +201,21 @@ export function QuestionnaireApp() {
               if (!res.ok) {
                 const errBody = await res.json().catch(() => ({ error: 'שגיאה לא צפויה' }));
                 throw new Error(errBody.error || 'השליחה נכשלה');
+              }
+              // אם המשתמש מבקש פגישה — מעבירים את כל הדף לעמוד תודה.
+              // אחרת — מציגים success screen מקומית כרגיל.
+              if (state.wantsMeeting) {
+                try {
+                  if (window.top) {
+                    window.top.location.href = MEETING_THANKYOU_URL;
+                  } else {
+                    window.location.href = MEETING_THANKYOU_URL;
+                  }
+                } catch {
+                  // אם הדפדפן חוסם cross-origin top navigation — fallback לתוך האייפריים
+                  window.location.href = MEETING_THANKYOU_URL;
+                }
+                return;
               }
               setState((s) => ({ ...s, submitting: false, screen: 'success' }));
             } catch (err) {
