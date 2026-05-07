@@ -25,6 +25,7 @@ type SubmitPayload = {
   phone?: string;
   wantsMeeting: boolean;
   wantsReport: boolean;
+  marketingConsent: boolean;
 };
 
 type SubmitResult = {
@@ -109,6 +110,7 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
       hasExistingProperty: scoring.hasExistingProperty,
       reportUrl,
       wantsMeeting: body.wantsMeeting,
+      marketingConsent: body.marketingConsent ?? true,
     });
   } catch (err) {
     // Smoove נכשל — לוגים אבל לא חוסם את התגובה ללקוח

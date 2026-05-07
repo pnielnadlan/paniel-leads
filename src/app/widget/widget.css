@@ -366,16 +366,23 @@
   border-radius: 16px;
 }
 
-/* כשהמרקר הוא אייקון (אמוג'י) — בלי רקע גרדיאנט, רק האייקון */
+/* כשהמרקר הוא אייקון SVG (Q13) — רקע עדין, צבע cyan, מסגרת דקה */
 .option-marker-icon {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
-  font-size: 30px !important;
+  background: rgba(0, 204, 204, 0.08) !important;
+  border-color: rgba(0, 204, 204, 0.35) !important;
+  color: #7dd3fc !important;
+}
+
+.option:hover .option-marker-icon {
+  background: rgba(0, 204, 204, 0.14) !important;
+  border-color: rgba(0, 204, 204, 0.55) !important;
+  color: #ccfbf1 !important;
 }
 
 .option-selected .option-marker-icon {
-  background: linear-gradient(135deg, rgba(0, 204, 204, 0.20) 0%, rgba(0, 153, 255, 0.15) 100%) !important;
-  border-color: rgba(0, 204, 204, 0.50) !important;
+  background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
 }
 
 .options-q13 .option-text {
@@ -881,37 +888,35 @@
   margin-right: auto;
 }
 
-/* ─── Checkboxes — ממורכזות, side-by-side, צרות ─── */
+/* ─── Checkboxes — חצי-חצי לרוחב, גבוהים ובולטים ─── */
 .checkboxes {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 8px auto 0;
-  justify-content: center;
-  max-width: 720px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 8px 0 0;
+  width: 100%;
 }
 
 .checkbox-row {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
+  gap: 14px;
+  padding: 20px 22px;       /* גבוה יותר */
   background: rgba(255, 255, 255, 0.04);
   border: 1.5px solid rgba(255, 255, 255, 0.10);
   border-radius: 14px;
   cursor: pointer;
   transition: all 200ms ease;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.95);
+  font-size: 18px;          /* גדול יותר */
+  color: #ffffff;            /* יותר בולט */
   position: relative;
-  font-weight: 500;
-  flex: 0 1 auto;
+  font-weight: 600;          /* מודגש יותר */
+  width: 100%;
+  text-align: right;
 }
 
 @media (max-width: 720px) {
-  .checkboxes { flex-direction: column; }
-  .checkbox-row { width: 100%; justify-content: flex-start; }
+  .checkboxes { grid-template-columns: 1fr; }
 }
 
 .checkbox-row:hover {
@@ -947,7 +952,49 @@
   border-color: transparent;
 }
 
-.checkbox-label { white-space: nowrap; }
+.checkbox-label { flex: 1; }
+
+/* ─── Consent (אישור שיווקי) — קטן יותר, עדין יותר, ממורכז ─── */
+.consent-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px auto 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  user-select: none;
+  align-self: center;
+  transition: color 200ms ease;
+  font-weight: 400;
+}
+
+.consent-row:hover { color: rgba(255, 255, 255, 0.85); }
+
+.consent-input { position: absolute; opacity: 0; pointer-events: none; }
+
+.consent-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.30);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 200ms ease;
+}
+
+.consent-checked .consent-box {
+  background: linear-gradient(135deg, #00cccc 0%, #0099ff 100%);
+  border-color: transparent;
+}
+
+.consent-label { line-height: 1.3; }
 
 .screen-insights > .btn-primary {
   align-self: center;

@@ -28,6 +28,7 @@ export type SmoveSyncInput = {
   hasExistingProperty: boolean;
   reportUrl: string;
   wantsMeeting: boolean;
+  marketingConsent: boolean;
 };
 
 /**
@@ -57,6 +58,8 @@ export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> 
     lastName,
     customFields,
     lists_ToSubscribe: input.wantsMeeting ? [MEETING_LIST_ID] : [],
+    // אם המשתמש לא אישר שיווק — נחסום אופציה לקבל מיילים. ברירת מחדל: כן.
+    canReceiveEmails: input.marketingConsent,
   };
   if (cleanPhone) {
     // Smoove תומך ב-mobile (cellPhone) — הפורמט המומלץ למובייל ישראלי

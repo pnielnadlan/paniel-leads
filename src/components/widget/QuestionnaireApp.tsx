@@ -42,6 +42,7 @@ type AppState = {
   phone: string;
   wantsMeeting: boolean;
   wantsReport: boolean;
+  marketingConsent: boolean;
   // נחושב לאחר השאלון, לפני מסך התובנות:
   reportId: string | null;
   teasers: string[];
@@ -65,6 +66,7 @@ const INITIAL_STATE: AppState = {
   phone: '',
   wantsMeeting: false,
   wantsReport: false,
+  marketingConsent: true, // ברירת מחדל מסומן (וגם חובה — submit חסום בלעדיו)
   reportId: null,
   teasers: [],
   submitting: false,
@@ -189,10 +191,12 @@ export function QuestionnaireApp() {
           teasers={state.teasers}
           wantsMeeting={state.wantsMeeting}
           wantsReport={state.wantsReport}
+          marketingConsent={state.marketingConsent}
           submitting={state.submitting}
           submitError={state.submitError}
           onToggleMeeting={(v) => setState({ ...state, wantsMeeting: v })}
           onToggleReport={(v) => setState({ ...state, wantsReport: v })}
+          onToggleConsent={(v) => setState({ ...state, marketingConsent: v })}
           onSubmit={async () => {
             setState({ ...state, submitting: true, submitError: null });
             try {
@@ -203,6 +207,7 @@ export function QuestionnaireApp() {
                 phone: state.phone,
                 wantsMeeting: state.wantsMeeting,
                 wantsReport: state.wantsReport,
+                marketingConsent: state.marketingConsent,
               };
               const res = await fetch('/api/submit', {
                 method: 'POST',
@@ -376,8 +381,6 @@ function OptionButton({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  // אם יש אייקון מוגדר לאופציה — מציגים אותו (שאלה 13). אחרת — אות עברית.
-  const markerContent = option.icon ?? HEBREW_MARKER[option.id];
   return (
     <button
       type="button"
@@ -386,11 +389,70 @@ function OptionButton({
       aria-pressed={isSelected}
     >
       <span className={`option-marker ${option.icon ? 'option-marker-icon' : ''}`}>
-        {markerContent}
+        {option.icon ? <LineIcon name={option.icon} /> : HEBREW_MARKER[option.id]}
       </span>
       <span className="option-text">{option.text}</span>
     </button>
   );
+}
+
+/**
+ * אייקוני קו (outline) בסגנון Lucide. כולם באותו צבע (currentColor)
+ * וגודל עקבי, מתואמים לעיצוב הדארק הפרימיום.
+ */
+function LineIcon({ name }: { name: string }) {
+  const props = {
+    width: 30,
+    height: 30,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.75,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  switch (name) {
+    case 'compass':
+      return (
+        <svg {...props} aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+        </svg>
+      );
+    case 'alert':
+      return (
+        <svg {...props} aria-hidden="true">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+        </svg>
+      );
+    case 'target':
+      return (
+        <svg {...props} aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="12" r="6" />
+          <circle cx="12" cy="12" r="2" />
+        </svg>
+      );
+    case 'trending':
+      return (
+        <svg {...props} aria-hidden="true">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+          <polyline points="16 7 22 7 22 13" />
+        </svg>
+      );
+    case 'help':
+      return (
+        <svg {...props} aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+          <path d="M12 17h.01" />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
 
 function LoadingScreen({ onDone }: { onDone: () => void }) {
@@ -612,20 +674,24 @@ function InsightsScreen({
   teasers,
   wantsMeeting,
   wantsReport,
+  marketingConsent,
   submitting,
   submitError,
   onToggleMeeting,
   onToggleReport,
+  onToggleConsent,
   onSubmit,
 }: {
   fullName: string;
   teasers: string[];
   wantsMeeting: boolean;
   wantsReport: boolean;
+  marketingConsent: boolean;
   submitting: boolean;
   submitError: string | null;
   onToggleMeeting: (v: boolean) => void;
   onToggleReport: (v: boolean) => void;
+  onToggleConsent: (v: boolean) => void;
   onSubmit: () => void;
 }) {
   return (
@@ -659,10 +725,25 @@ function InsightsScreen({
           onChange={onToggleReport}
         />
       </div>
+      {/* checkbox קטן של אישור שיווקי — מסומן כברירת מחדל וחובה לאישור */}
+      <label className={`consent-row ${marketingConsent ? 'consent-checked' : ''}`}>
+        <input
+          type="checkbox"
+          checked={marketingConsent}
+          onChange={(e) => onToggleConsent(e.target.checked)}
+          className="consent-input"
+        />
+        <span className="consent-box" aria-hidden="true">
+          {marketingConsent && '✓'}
+        </span>
+        <span className="consent-label">
+          הנני מאשר/ת לפניאל לשלוח לי מידע שיווקי
+        </span>
+      </label>
       <button
         className="btn-primary btn-lg"
         onClick={onSubmit}
-        disabled={(!wantsMeeting && !wantsReport) || submitting}
+        disabled={(!wantsMeeting && !wantsReport) || !marketingConsent || submitting}
       >
         {submitting ? 'שולח...' : 'שליחה'}
       </button>
