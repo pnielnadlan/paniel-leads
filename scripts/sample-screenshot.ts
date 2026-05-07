@@ -4,7 +4,11 @@
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+
+const CHROME_PATH =
+  process.env.CHROME_PATH ||
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(__dirname, '..', 'tmp');
@@ -13,6 +17,7 @@ mkdirSync(OUT_DIR, { recursive: true });
 const html = readFileSync(join(OUT_DIR, 'sample.html'), 'utf-8');
 
 const browser = await puppeteer.launch({
+  executablePath: CHROME_PATH,
   headless: true,
   args: ['--no-sandbox', '--disable-setuid-sandbox'],
 });
