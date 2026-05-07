@@ -28,6 +28,7 @@ type Screen =
   | 'loading'
   | 'email'
   | 'name'
+  | 'phone'
   | 'insights'
   | 'success';
 
@@ -38,6 +39,7 @@ type AppState = {
   pendingSelection: OptionId | null;
   email: string;
   fullName: string;
+  phone: string;
   wantsMeeting: boolean;
   wantsReport: boolean;
   // נחושב לאחר השאלון, לפני מסך התובנות:
@@ -60,6 +62,7 @@ const INITIAL_STATE: AppState = {
   pendingSelection: null,
   email: '',
   fullName: '',
+  phone: '',
   wantsMeeting: false,
   wantsReport: false,
   reportId: null,
@@ -160,6 +163,13 @@ export function QuestionnaireApp() {
         <NameScreen
           value={state.fullName}
           onChange={(fullName) => setState({ ...state, fullName })}
+          onNext={() => setState({ ...state, screen: 'phone' })}
+        />
+      )}
+      {state.screen === 'phone' && (
+        <PhoneScreen
+          value={state.phone}
+          onChange={(phone) => setState({ ...state, phone })}
           onNext={() => {
             // ניקוד client-side + שליפת תובנות מקובץ הנתונים שנבנה ב-build time
             const result = scoreSubmission(state.answers);
@@ -190,6 +200,7 @@ export function QuestionnaireApp() {
                 answers: Object.fromEntries(state.answers),
                 email: state.email,
                 fullName: state.fullName,
+                phone: state.phone,
                 wantsMeeting: state.wantsMeeting,
                 wantsReport: state.wantsReport,
               };
@@ -265,13 +276,15 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
       <div className="intro-eyebrow">פניאל נדל"ן · אבחון פרופיל משקיע</div>
       <h1 className="intro-title">תוך 20 שניות תדע<br />את פרופיל המשקיע שלך</h1>
       <p className="intro-text">
-        אנחנו שואלים שאלות מבוססות ידע כללי, תענו כמה שיותר אינטואיטיבית בשליפה — זה יהיה יותר אפקטיבי.
+        אנחנו שואלים שאלות מבוססות ידע כללי,
+        <br />
+        תענו כמה שיותר אינטואיטיבית בשליפה — זה יהיה יותר אפקטיבי.
         <br />
         מוכנים?
       </p>
       <button className="btn-primary btn-lg" onClick={onStart}>
         קדימה
-        <span className="btn-arrow">‹</span>
+        <ArrowIcon direction="next" />
       </button>
     </div>
   );
@@ -332,13 +345,13 @@ function QuestionScreen({
       <div className="q-actions">
         {onBack && (
           <button className="btn-ghost" onClick={onBack}>
-            <span className="btn-arrow flip">‹</span>
+            <ArrowIcon direction="prev" />
             חזרה
           </button>
         )}
         <button className="btn-primary" onClick={onNext} disabled={!selected}>
           הבא
-          <span className="btn-arrow">‹</span>
+          <ArrowIcon direction="next" />
         </button>
       </div>
     </div>
@@ -363,6 +376,8 @@ function OptionButton({
   isSelected: boolean;
   onClick: () => void;
 }) {
+  // אם יש אייקון מוגדר לאופציה — מציגים אותו (שאלה 13). אחרת — אות עברית.
+  const markerContent = option.icon ?? HEBREW_MARKER[option.id];
   return (
     <button
       type="button"
@@ -370,7 +385,9 @@ function OptionButton({
       onClick={onClick}
       aria-pressed={isSelected}
     >
-      <span className="option-marker">{HEBREW_MARKER[option.id]}</span>
+      <span className={`option-marker ${option.icon ? 'option-marker-icon' : ''}`}>
+        {markerContent}
+      </span>
       <span className="option-text">{option.text}</span>
     </button>
   );
@@ -483,7 +500,7 @@ function EmailScreen({
       />
       <button className="btn-primary" onClick={onNext} disabled={!isValid}>
         הבא
-        <span className="btn-arrow">‹</span>
+        <ArrowIcon direction="next" />
       </button>
     </div>
   );
@@ -515,9 +532,78 @@ function NameScreen({
       />
       <button className="btn-primary" onClick={onNext} disabled={!isValid}>
         הבא
-        <span className="btn-arrow">‹</span>
+        <ArrowIcon direction="next" />
       </button>
     </div>
+  );
+}
+
+function PhoneScreen({
+  value,
+  onChange,
+  onNext,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onNext: () => void;
+}) {
+  // ולידציה רכה — מספר טלפון ישראלי: 9-10 ספרות, מתחיל ב-0 או ב-+972
+  const digits = value.replace(/\D/g, '');
+  const isValid = /^(0\d{8,9}|972\d{8,9})$/.test(digits);
+
+  return (
+    <div className="screen screen-form">
+      <h2 className="form-title">ומה מספר הטלפון?</h2>
+      <p className="form-help">
+        כדי שנוכל לחזור אליך אם תבקש פגישת אפיון אישית.
+      </p>
+      <input
+        type="tel"
+        dir="ltr"
+        inputMode="tel"
+        className="form-input"
+        placeholder="050-1234567"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && isValid) onNext();
+        }}
+        autoFocus
+      />
+      <button className="btn-primary" onClick={onNext} disabled={!isValid}>
+        הבא
+        <ArrowIcon direction="next" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * חץ-SVG אמיתי עם ראש חץ. ל-RTL — direction="next" מצביע שמאלה (כיוון "הבא" בעברית),
+ * direction="prev" מצביע ימינה.
+ */
+function ArrowIcon({ direction = 'next' }: { direction?: 'next' | 'prev' }) {
+  // הציור הבסיסי הוא חץ ימינה. כשהכיוון הוא "next" (RTL: שמאלה) — היפוך scaleX.
+  return (
+    <svg
+      width="20"
+      height="16"
+      viewBox="0 0 20 16"
+      fill="none"
+      aria-hidden="true"
+      style={{
+        transform: direction === 'next' ? 'scaleX(-1)' : 'none',
+        flexShrink: 0,
+      }}
+    >
+      <path
+        d="M11 1.5L17.5 8L11 14.5M17 8H2"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

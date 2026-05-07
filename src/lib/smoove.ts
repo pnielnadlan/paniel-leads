@@ -23,6 +23,7 @@ export const smooveConfigured = Boolean(API_KEY);
 export type SmoveSyncInput = {
   email: string;
   fullName: string;
+  phone?: string;
   capitalRange: CapitalRange;
   hasExistingProperty: boolean;
   reportUrl: string;
@@ -47,13 +48,20 @@ export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> 
     [FIELD_REPORT_URL]: input.reportUrl,
   };
 
-  const body = {
+  // נורמליזציה של מס' טלפון: נקה רווחים/מקפים, השאר רק ספרות + +
+  const cleanPhone = input.phone?.replace(/[^\d+]/g, '') || undefined;
+
+  const body: Record<string, unknown> = {
     email: input.email,
     firstName,
     lastName,
     customFields,
     lists_ToSubscribe: input.wantsMeeting ? [MEETING_LIST_ID] : [],
   };
+  if (cleanPhone) {
+    // Smoove תומך ב-mobile (cellPhone) — הפורמט המומלץ למובייל ישראלי
+    body.mobile = cleanPhone;
+  }
 
   if (!API_KEY) {
     console.warn('[smoove] Not configured — would have sent:', body);

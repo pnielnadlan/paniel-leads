@@ -188,12 +188,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Q13 — ההיררכיה הופכת: "הגענו לסוף" כותרת ראשית ענקית */
+/* Q13 — ההיררכיה הופכת: "הגענו לסוף" כותרת ראשית, "בסוף האבחון" כותרת משנה.
+   תיקון אחרון: הקטנה קלה של ה-display + הגדלה קלה של ה-secondary. */
 .q-intro-display {
-  font-size: clamp(38px, 5.4vw, 56px);
+  font-size: clamp(34px, 4.8vw, 50px);
   font-weight: 800;
   color: #ffffff;
-  line-height: 1.1;
+  line-height: 1.12;
   letter-spacing: -0.02em;
   text-align: center;
   background: none;
@@ -203,7 +204,7 @@
   text-shadow: 0 2px 30px rgba(0, 153, 255, 0.25);
 }
 
-/* טקסט שאלה רגיל — גדול ובולט */
+/* טקסט שאלה רגיל — גדול ובולט. במובייל מתמרכז. */
 .q-text {
   font-size: clamp(28px, 3.4vw, 36px);
   font-weight: 800;
@@ -213,12 +214,17 @@
   letter-spacing: -0.012em;
 }
 
-/* ב-Q13 השאלה היא h2, לא ראשית — קצת קטנה יותר */
+@media (max-width: 720px) {
+  .q-text { text-align: center; }
+  .q-counter { align-self: center; }
+}
+
+/* ב-Q13 השאלה היא h2 — קצת גדולה יותר מ-V5 כדי לאזן את ההיררכיה */
 .q-text-secondary {
-  font-size: clamp(20px, 2.2vw, 24px);
+  font-size: clamp(22px, 2.6vw, 28px);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.35;
   text-align: center;
   margin: 0;
 }
@@ -355,9 +361,21 @@
 }
 
 .options-q13 .option-marker {
-  width: 44px; height: 44px;
-  font-size: 20px;
-  border-radius: 14px;
+  width: 56px; height: 56px;
+  font-size: 26px;
+  border-radius: 16px;
+}
+
+/* כשהמרקר הוא אייקון (אמוג'י) — בלי רקע גרדיאנט, רק האייקון */
+.option-marker-icon {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  font-size: 30px !important;
+}
+
+.option-selected .option-marker-icon {
+  background: linear-gradient(135deg, rgba(0, 204, 204, 0.20) 0%, rgba(0, 153, 255, 0.15) 100%) !important;
+  border-color: rgba(0, 204, 204, 0.50) !important;
 }
 
 .options-q13 .option-text {
@@ -396,18 +414,18 @@
   justify-content: center;
 }
 
-/* ────── כפתורים ────── */
+/* ────── כפתורים — גובה מצומצם, טקסט בולט ────── */
 .btn-primary,
 .btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 18px 32px;
+  padding: 14px 30px;     /* פדינג מצומצם — לא ענק */
   font-family: inherit;
-  font-size: 21px;        /* היה 19 — מוגדל */
+  font-size: 22px;
   font-weight: 700;
-  border-radius: 14px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -463,10 +481,10 @@
 }
 
 .btn-lg {
-  padding: 22px 56px;
-  font-size: 24px;
+  padding: 16px 56px;     /* פדינג אנכי קטן יותר — אבל רוחב נשמר */
+  font-size: 26px;        /* טקסט גדול יותר */
   font-weight: 800;
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .btn-arrow {
@@ -559,19 +577,19 @@
   letter-spacing: -0.018em;
 }
 
-/* ── form-help: קופסה הפוכה — רקע בהיר, טקסט כהה ── */
+/* ── form-help: קופסה הפוכה — רקע בהיר (5% מעומעם), טקסט כהה ── */
 .form-help {
-  font-size: 21px;        /* גדול יותר */
-  color: #051a2e;          /* טקסט כהה */
+  font-size: 21px;
+  color: #051a2e;
   margin: 0;
   line-height: 1.5;
   padding: 22px 28px;
-  background: linear-gradient(135deg, #ffffff 0%, #e6f6fa 100%);
+  background: linear-gradient(135deg, #e8eef2 0%, #d4e6ec 100%);
   border-radius: 16px;
   font-weight: 600;
   text-align: center;
   border: none;
-  box-shadow: 0 8px 24px -8px rgba(0, 204, 204, 0.25);
+  box-shadow: 0 8px 24px -8px rgba(0, 204, 204, 0.20);
 }
 
 .form-help strong {
@@ -659,13 +677,13 @@
   border-radius: 18px;
 }
 
-/* כרטיסיות אטומות — לבן על כהה ליצירת ניגודיות */
+/* כרטיסיות אטומות — לבן-עמום על כהה (5% מעומעם, פחות מסנוור) */
 .teaser-card {
   position: absolute;
   inset: 0;
   margin: 0 auto;
   max-width: 580px;
-  background: linear-gradient(150deg, #f8fbfd 0%, #e6f4f8 100%);
+  background: linear-gradient(150deg, #e8eef2 0%, #d6e7ed 100%);
   border: none;
   border-radius: 18px;
   padding: 34px 38px;
@@ -673,7 +691,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  text-align: center;       /* ────── טקסט ממורכז ────── */
+  text-align: center;
   gap: 16px;
   transition: transform 460ms cubic-bezier(0.4, 0, 0.2, 1), opacity 380ms ease;
   box-sizing: border-box;

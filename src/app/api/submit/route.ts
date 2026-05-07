@@ -22,6 +22,7 @@ type SubmitPayload = {
   answers: Record<string, OptionId>;
   email: string;
   fullName: string;
+  phone?: string;
   wantsMeeting: boolean;
   wantsReport: boolean;
 };
@@ -103,6 +104,7 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
     await syncContactToSmoove({
       email: body.email,
       fullName: body.fullName.trim(),
+      phone: body.phone,
       capitalRange: scoring.capitalRange,
       hasExistingProperty: scoring.hasExistingProperty,
       reportUrl,
