@@ -295,14 +295,27 @@ function QuestionScreen({
   conditionalSubtitle?: string;
 }) {
   const optionCount = question.options.length;
-  const layoutClass = optionCount === 2 ? 'options-grid-2' : 'options-stack';
+  const isQ13 = question.id === 13;
+  // Q13 מקבל פריסה ייחודית (2-col grid של כרטיסיות) כי הוא מטריקה אחרת —
+  // מטא-שאלה על מה המשתמש רוצה לדעת על עצמו.
+  const layoutClass = isQ13
+    ? 'options-q13'
+    : optionCount === 2
+    ? 'options-grid-2'
+    : 'options-stack';
 
   return (
     <div className="screen screen-question" key={question.id}>
       <div className="q-counter">שאלה {progress} מתוך 13</div>
-      {/* מבוא רך נפרד היררכית מהשאלה (לדוגמה ש' 13) */}
-      {question.intro && <p className="q-intro">{question.intro}</p>}
-      <h2 className="q-text">{question.text}</h2>
+      {/* ב-Q13 ההיררכיה הפוכה: ה-intro הוא הכותרת הראשית הענקית */}
+      {question.intro && (
+        <p className={isQ13 ? 'q-intro q-intro-display' : 'q-intro'}>
+          {question.intro}
+        </p>
+      )}
+      <h2 className={isQ13 ? 'q-text q-text-secondary' : 'q-text'}>
+        {question.text}
+      </h2>
       {conditionalSubtitle && (
         <div className="q-subtitle">("{conditionalSubtitle}")</div>
       )}
@@ -531,12 +544,12 @@ function InsightsScreen({
 }) {
   return (
     <div className="screen screen-insights">
-      {/* הפסיק נשאר מחוץ לספאן הצבעוני */}
+      {/* הפסיק בתוך הספאן כדי שיירש את צבע הגרדיאנט של השם */}
       <h2 className="insights-title">
-        מעולה <span className="insights-name">{fullName}</span>,
+        מעולה <span className="insights-name">{fullName},</span>
       </h2>
       <p className="insights-intro">
-        הדוח המפורט שלנו יישלח אליך בדקות הקרובות, ובנתיים — הנה 5 "כותרות" מתוך הדוח:
+        <strong>הדוח המפורט שלנו</strong> יישלח אליך בדקות הקרובות, ובנתיים — הנה 5 "כותרות" מתוך הדוח:
       </p>
 
       <TeaserCarousel teasers={teasers} />
@@ -575,11 +588,10 @@ function InsightsScreen({
 }
 
 /**
- * קרוסלה של 5 תובנות עם אפקט "ערימה":
- * - הכרטיסיה הפעילה במרכז
- * - כרטיסיות שכבר ראינו נערמות מאחורי הפעילה (הזחה רק 8px ימינה+למטה)
- * - הכרטיסיה הבאה מציצה משמאל (כיוון "הבא" ב-RTL)
- * - דקות-ניווט: חיצים + נקודות, לחיצה על נקודה קופצת ישירות
+ * קרוסלה אופקית של 5 תובנות:
+ * - דסקטופ: סליידר רגיל — כרטיסיה אחת ממורכזת בכל פעם
+ * - מובייל: אפקט ערימה (CSS @media)
+ * - חיצים בכיוון הקריאה העברי: ‹ הבא בצד שמאל, › הקודם בצד ימין
  */
 function TeaserCarousel({ teasers }: { teasers: string[] }) {
   const [active, setActive] = useState(0);
@@ -592,26 +604,14 @@ function TeaserCarousel({ teasers }: { teasers: string[] }) {
       <div className="teaser-stage">
         {teasers.map((t, i) => {
           const offset = i - active;
-          let pos: string;
+          let pos: 'active' | 'prev' | 'next' | 'far-prev' | 'far-next';
           if (offset === 0) pos = 'active';
-          else if (offset < 0) {
-            // כבר ראינו — נערמת מאחורי הפעילה
-            const depth = Math.min(Math.abs(offset), 4);
-            pos = `behind-${depth}`;
-          } else if (offset === 1) {
-            pos = 'next';
-          } else {
-            pos = 'hidden-left';
-          }
+          else if (offset === -1) pos = 'prev';
+          else if (offset === 1) pos = 'next';
+          else if (offset < -1) pos = 'far-prev';
+          else pos = 'far-next';
           return (
-            <div
-              key={i}
-              className="teaser-card"
-              data-pos={pos}
-              onClick={() => offset !== 0 && setActive(i)}
-              role="button"
-              tabIndex={offset === 0 ? -1 : 0}
-            >
+            <div key={i} className="teaser-card" data-pos={pos}>
               <div className="teaser-card-num">תובנה {i + 1} מתוך {total}</div>
               <p className="teaser-card-text">{t}</p>
             </div>
@@ -619,14 +619,14 @@ function TeaserCarousel({ teasers }: { teasers: string[] }) {
         })}
       </div>
       <div className="teaser-nav">
-        {/* חיצים מותאמים ל-RTL: prev = ימינה, next = שמאלה */}
+        {/* RTL: צד ימין = "הבא" (כיוון הקריאה), צד שמאל = "הקודם" */}
         <button
           className="teaser-arrow"
-          onClick={goPrev}
-          disabled={active === 0}
-          aria-label="הקודם"
+          onClick={goNext}
+          disabled={active === total - 1}
+          aria-label="הבא"
         >
-          ›
+          ‹
         </button>
         <div className="teaser-dots">
           {teasers.map((_, i) => (
@@ -640,11 +640,11 @@ function TeaserCarousel({ teasers }: { teasers: string[] }) {
         </div>
         <button
           className="teaser-arrow"
-          onClick={goNext}
-          disabled={active === total - 1}
-          aria-label="הבא"
+          onClick={goPrev}
+          disabled={active === 0}
+          aria-label="הקודם"
         >
-          ‹
+          ›
         </button>
       </div>
     </div>
