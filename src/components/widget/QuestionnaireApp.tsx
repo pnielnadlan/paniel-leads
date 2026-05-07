@@ -228,7 +228,9 @@ export function QuestionnaireApp() {
           }}
         />
       )}
-      {state.screen === 'success' && <SuccessScreen wantsMeeting={state.wantsMeeting} />}
+      {state.screen === 'success' && (
+        <SuccessScreen wantsMeeting={state.wantsMeeting} email={state.email} />
+      )}
 
       {state.screen === 'question' && (
         <ProgressBar current={displayQNumber(state.currentQid)} total={TOTAL_QUESTIONS_FOR_PROGRESS} />
@@ -491,7 +493,9 @@ function InsightsScreen({
 }) {
   return (
     <div className="screen screen-insights">
-      <h2 className="insights-title">מעולה {fullName},</h2>
+      <h2 className="insights-title">
+        מעולה <span className="insights-name">{fullName}</span>,
+      </h2>
       <p className="insights-intro">
         הדוח המפורט שלנו יישלח אליך בדקות הקרובות, ובנתיים — הנה 5 "כותרות" מתוך הדוח:
       </p>
@@ -557,11 +561,21 @@ function CheckboxRow({
   );
 }
 
-function SuccessScreen({ wantsMeeting }: { wantsMeeting: boolean }) {
+function SuccessScreen({
+  wantsMeeting,
+  email,
+}: {
+  wantsMeeting: boolean;
+  email: string;
+}) {
   return (
     <div className="screen screen-success">
       <div className="success-icon" aria-hidden="true">✓</div>
-      <h2 className="success-title">מעולה, שלחנו את הדוח המלא במייל</h2>
+      <h2 className="success-title">הדוח המלא בדרך אליך</h2>
+      <p className="success-text">
+        נשלח עכשיו לכתובת:
+      </p>
+      <div className="success-email">{email}</div>
       <p className="success-text">
         {wantsMeeting
           ? 'בקרוב נחזור אליך לתיאום פגישת אפיון אישית.'
