@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# פלט מקומי של בדיקות (PDFs לדוגמה, screenshots)
+tmp/
+
+# הגדרות מקומיות של preview / launch
+.claude/

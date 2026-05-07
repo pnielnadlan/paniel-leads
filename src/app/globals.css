@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Almoni';
+  src: url('/fonts/almoni-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Almoni';
+  src: url('/fonts/almoni-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Almoni';
+  src: url('/fonts/almoni-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* פלטת המותג של פניאל נדל"ן */
+  --color-prussian: #011d30;
+  --color-baltic: #006699;
+  --color-cyan: #00cccc;
+  --color-dodger: #0099ff;
+  --color-pale: #f5fafd;
+  --color-border: #e0e8ef;
+  --color-muted: #6b7d8c;
+
+  --font-brand: 'Almoni', 'Helvetica Neue', Arial, sans-serif;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-prussian: var(--color-prussian);
+  --color-baltic: var(--color-baltic);
+  --color-cyan: var(--color-cyan);
+  --color-dodger: var(--color-dodger);
+  --color-pale: var(--color-pale);
+  --color-border: var(--color-border);
+  --color-muted: var(--color-muted);
+  --font-sans: var(--font-brand);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-family: var(--font-brand);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-brand);
+  color: var(--color-prussian);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
