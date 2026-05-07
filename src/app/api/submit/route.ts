@@ -82,17 +82,7 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
     pdfBuffer = await generatePdf(html);
   } catch (err) {
     console.error('[submit] PDF generation failed:', err);
-    return NextResponse.json(
-      {
-        error: 'יצירת ה-PDF נכשלה',
-        // TODO: להסיר אחרי שהדיבאג מסתיים
-        debug:
-          err instanceof Error
-            ? `${err.name}: ${err.message}\n${err.stack?.split('\n').slice(0, 8).join('\n')}`
-            : String(err),
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'יצירת ה-PDF נכשלה' }, { status: 500 });
   }
 
   // ─── העלאה ל-Storage ────────────────────────────────────────────────────
