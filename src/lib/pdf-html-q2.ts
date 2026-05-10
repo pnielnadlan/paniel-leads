@@ -1,6 +1,7 @@
 // V2 (q2) — בונה HTML של דוח PDF.
-// אותו סגנון ויזואלי כמו V1 (לוגו, פונט אלמוני, פלטה), אבל מבנה מטא פשוט יותר —
-// אין "פרופיל" ו"פוקוס", רק קטגוריית הדוח.
+// אותו סגנון ויזואלי כמו V1 (לוגו, פונט אלמוני, פלטה).
+// אין meta-strip עם "קטגוריית הדוח" — זה תיוג פנימי שלא מתאים ללקוח.
+// בסוף יש סקציית CTA בולטת עם כפתור קליקבילי לתיאום פגישה.
 
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -22,6 +23,8 @@ const FONT_REGULAR = loadAsBase64('fonts/almoni-regular.woff2');
 const FONT_MEDIUM = loadAsBase64('fonts/almoni-medium.woff2');
 const FONT_BOLD = loadAsBase64('fonts/almoni-bold.woff2');
 const LOGO_SVG = loadAsText('branding/logo.svg');
+
+const CONSULTING_URL = 'https://pniel.co.il/consulting/';
 
 const COLORS = {
   prussianBlue: '#011d30',
@@ -100,35 +103,7 @@ export function buildQ2PdfHtml(report: Q2RenderOutput): string {
       font-weight: 700;
       font-size: 26pt;
       line-height: 1.25;
-      margin: 0 0 6mm 0;
-    }
-
-    .meta-strip {
-      display: flex;
-      gap: 6mm;
-      padding: 3mm 4mm;
-      background: ${COLORS.paleBackground};
-      border-right: 3px solid ${COLORS.strongCyan};
-      margin-bottom: 8mm;
-      font-size: 10pt;
-    }
-
-    .meta-strip .meta-item {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .meta-strip .meta-label {
-      color: ${COLORS.balticBlue};
-      font-weight: 500;
-      font-size: 8.5pt;
-      letter-spacing: 0.04em;
-    }
-
-    .meta-strip .meta-value {
-      color: ${COLORS.prussianBlue};
-      font-weight: 700;
-      font-size: 11pt;
+      margin: 0 0 8mm 0;
     }
 
     main h2 {
@@ -150,31 +125,65 @@ export function buildQ2PdfHtml(report: Q2RenderOutput): string {
       margin-bottom: 0;
     }
 
+    main > p { margin-bottom: 3mm; }
+
+    /* ─── סקציית CTA — בולטת, ממורכזת, עם כפתור קליקבילי ─── */
     .meeting-cta {
-      margin-top: 10mm;
-      padding: 6mm 6mm;
+      margin-top: 14mm;
+      padding: 10mm 8mm 11mm;
       background: ${COLORS.paleBackground};
-      border-radius: 4mm;
-      border: 1.5px solid ${COLORS.dodgerBlue};
+      border-radius: 5mm;
+      border: 2px solid ${COLORS.dodgerBlue};
       page-break-inside: avoid;
+      text-align: center;
     }
 
     .meeting-cta .cta-label {
       font-weight: 700;
-      font-size: 11pt;
+      font-size: 14pt;
       color: ${COLORS.dodgerBlue};
-      margin-bottom: 2mm;
+      margin: 0 0 4mm 0;
       letter-spacing: 0.02em;
     }
 
     .meeting-cta .cta-text {
-      font-size: 12pt;
-      line-height: 1.6;
+      font-size: 14pt;
+      line-height: 1.65;
       color: ${COLORS.prussianBlue};
-      margin: 0;
+      font-weight: 500;
+      margin: 0 auto 8mm;
+      max-width: 145mm;
+      text-align: center;
     }
 
-    main > p { margin-bottom: 3mm; }
+    .meeting-cta .cta-headline {
+      font-weight: 800;
+      font-size: 22pt;
+      color: ${COLORS.prussianBlue};
+      margin: 0 0 6mm 0;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    /* כפתור CTA — אנקור עם רקע מלא, גרדיאנט בלוז המותג, ללא קו תחתון */
+    .meeting-cta .cta-button {
+      display: inline-block;
+      padding: 5mm 12mm;
+      background: ${COLORS.dodgerBlue};
+      color: #ffffff !important;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 15pt;
+      border-radius: 3mm;
+      letter-spacing: 0.01em;
+      box-shadow: 0 2mm 4mm rgba(0, 153, 255, 0.25);
+    }
+
+    .meeting-cta .cta-button:visited,
+    .meeting-cta .cta-button:link {
+      color: #ffffff !important;
+      text-decoration: none;
+    }
   `;
 
   return `<!DOCTYPE html>
@@ -193,13 +202,6 @@ export function buildQ2PdfHtml(report: Q2RenderOutput): string {
   <div class="supratitle">דוח אישי עבור ${escapeHtml(report.fullName)}</div>
   <h1 class="report-title">${escapeHtml(report.title)}</h1>
 
-  <div class="meta-strip">
-    <div class="meta-item">
-      <span class="meta-label">קטגוריית הדוח</span>
-      <span class="meta-value">${escapeHtml(report.subtitle)}</span>
-    </div>
-  </div>
-
   <main>
     ${report.bodyHtml}
   </main>
@@ -207,6 +209,8 @@ export function buildQ2PdfHtml(report: Q2RenderOutput): string {
   <div class="meeting-cta">
     <div class="cta-label">השלב הבא: שיחת פיצוח אישית</div>
     <p class="cta-text">בפניאל נדל״ן ליווינו מעל 500 משפחות לרכישת נכס מבטיח, ויותר מ-80 כבר מימשו אקזיט ברווח נאה. שיחה אישית קצרה תאפשר לבדוק יחד איך הנתונים, ההון והמטרות שלכם מתחברים לתוכנית מעשית.</p>
+    <h2 class="cta-headline">מוכנים להשקיע בעתיד שלכם?</h2>
+    <a class="cta-button" href="${CONSULTING_URL}">קבעו פגישת אפיון ללא עלות &raquo;&raquo;</a>
   </div>
 </body>
 </html>`;
