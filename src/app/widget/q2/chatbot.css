@@ -156,7 +156,14 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   z-index: 5;
   pointer-events: none;
-  will-change: top;
+  will-change: top, transform;
+  /* תמיד פעיל — כל שינוי של top יגרור CSS transition אוטומטית, במקביל
+     לאנימציית ציור הריבוע של הבועה החדשה. */
+  transition: top var(--anim-long) linear;
+  /* אנימציית הופעה — רצה רק במונט הראשון של אלמנט (כל פעם שה-key משתנה).
+     משלבת fade-in + scale + ירידה קלה כדי להיות מסונכרנת עם ציור הבועה
+     הראשונה בבורסט. */
+  animation: floating-avatar-appear var(--anim-long) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (min-width: 720px) {
@@ -165,19 +172,9 @@
   }
 }
 
-.floating-avatar.sliding {
-  /* ליניארי כדי שזה יתפוס בדיוק את ציור הריבוע, בלי "tail" של ease-out */
-  transition: top var(--anim-long) linear;
-}
-
-.floating-avatar.appearing {
-  transition: none;
-  animation: floating-avatar-appear 380ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
-}
-
 @keyframes floating-avatar-appear {
-  from { opacity: 0; transform: scale(0.55); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translateY(-32px) scale(0.65); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .bot-avatar-letter {

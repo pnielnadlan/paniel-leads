@@ -98,12 +98,14 @@ export function ChatbotApp() {
   const submittedRef = useRef(false);
 
   // ─── אווטאר floating ─────────────────────────────────────────────────────
-  // אחד בלבד, position absolute. נצמד לראש הודעת הבוט האחרונה. במעבר
-  // continuation (בוט→בוט) — מחליק חלק. ב"בורסט חדש" (אחרי הודעת משתמש) —
-  // מופיע במקום עם fade-in קל בלי גלילה.
+  // אחד בלבד, position absolute. נצמד לראש הודעת הבוט האחרונה.
+  // ה-transition על top *תמיד* פעיל בבסיס ה-CSS — כך שכל עדכון של ה-top
+  // מתחיל מיד ב-CSS transition (במקביל לאנימציית ציור הבועה החדשה). ה-key
+  // (avatarBurstId) משתנה רק כשמדובר בבורסט חדש (אחרי הודעת משתמש), וגורם
+  // ל-React לעשות remount → מאפסת את ה-CSS transition כך שהאווטאר מופיע
+  // מיד במקום החדש בלי לזוז ממיקום קודם.
   const [avatarTop, setAvatarTop] = useState<number | null>(null);
   const [avatarBurstId, setAvatarBurstId] = useState(0);
-  const [avatarSliding, setAvatarSliding] = useState(false);
 
   // ─── גלילה ─────────────────────────────────────────────────────────────
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -170,12 +172,10 @@ export function ChatbotApp() {
     // continuation = items[lastBotIdx-1] גם הוא bot-side
     const isContinuation = lastBotIdx > 0 && isBotSide(items[lastBotIdx - 1].kind);
     if (isContinuation) {
-      // חלקה — אנימציית CSS transition על top
-      setAvatarSliding(true);
+      // continuation: רק לעדכן top — ה-CSS transition יקפוץ אוטומטית
       setAvatarTop(newTop);
     } else {
-      // בורסט חדש — bump key ל-remount + מיקום מיידי + fade-in
-      setAvatarSliding(false);
+      // בורסט חדש — bump key ל-remount + מיקום מיידי
       setAvatarTop(newTop);
       setAvatarBurstId((k) => k + 1);
     }
@@ -206,19 +206,21 @@ export function ChatbotApp() {
     const longIntro = INTRO_BUBBLES.slice(0, 5).join('\n\n');
     const startQ = INTRO_BUBBLES[5];
 
-    // Stage 0: hero מיד עם הטעינה
+    // תזמון: כל בועה מופיעה בסיום הציור של הקודמת (~850ms = --anim-long)
+    // כך שהאווטאר נע ברצף חלק, בלי פערים.
+    // Stage 0: hero מיד
     setItems([{ kind: 'hero', key: 'hero' }]);
-    // Stage 1: intro long (אחרי 700ms)
+    // Stage 1: intro long ב-t=850
     const t1 = setTimeout(
       () => append({ kind: 'bot', text: longIntro, key: 'intro-long', length: 'long' }),
-      700,
+      850,
     );
-    // Stage 2: "שנתחיל?" (אחרי 2400ms)
+    // Stage 2: "שנתחיל?" ב-t=1700
     const t2 = setTimeout(
       () => append({ kind: 'bot', text: startQ, key: 'intro-start-q', length: 'short' }),
-      2400,
+      1700,
     );
-    // Stage 3: כפתור "בואו נתחיל" (אחרי 2900ms)
+    // Stage 3: "בואו נתחיל" ב-t=2400 (קצר יותר אחרי "שנתחיל?")
     const t3 = setTimeout(
       () =>
         append({
@@ -227,7 +229,7 @@ export function ChatbotApp() {
           label: START_BUTTON_LABEL,
           onPick: () => handleStart(),
         }),
-      2900,
+      2400,
     );
     return () => {
       clearTimeout(t1);
@@ -576,7 +578,7 @@ export function ChatbotApp() {
         {avatarTop !== null && (
           <div
             key={`avatar-${avatarBurstId}`}
-            className={`floating-avatar ${avatarSliding ? 'sliding' : 'appearing'}`}
+            className="floating-avatar"
             style={{ top: `${avatarTop}px` }}
             aria-hidden="true"
           >
