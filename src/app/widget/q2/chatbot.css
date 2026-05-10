@@ -518,6 +518,46 @@
   font-weight: 500;
 }
 
+/* ─── תמונות עדויות (grid 2x3 דסקטופ, 1 עמודה במובייל) ─── */
+.bot-row-testimonials .testimonials-grid {
+  flex: 0 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 540px;
+}
+
+@media (max-width: 720px) {
+  .bot-row-testimonials .testimonials-grid {
+    grid-template-columns: 1fr;
+    max-width: 320px;
+  }
+}
+
+.testimonial-card {
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 4px 16px -6px rgba(0, 30, 60, 0.18);
+  animation: bubble-pop-short var(--anim-short) cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.testimonial-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* כניסה מדורגת */
+.testimonial-card-1 { animation-delay: 80ms; }
+.testimonial-card-2 { animation-delay: 200ms; }
+.testimonial-card-3 { animation-delay: 320ms; }
+.testimonial-card-4 { animation-delay: 440ms; }
+.testimonial-card-5 { animation-delay: 560ms; }
+.testimonial-card-6 { animation-delay: 680ms; }
+
 /* ─── הודעת שגיאה ─── */
 .chat-error {
   align-self: flex-end;

@@ -1,10 +1,9 @@
 'use client';
 
 // V2 (q2) — צ'אטבוט.
-// אווטאר מופיע רק בהודעת בוט האחרונה ברצף (כמו ב-WhatsApp).
-// בועות ארוכות: מסגרת מצוירת מהפינה הימנית-עליונה לשמאלית-תחתונה.
-// בועות קצרות: פוף עדין.
-// גלילה: תמיד מוצמדת לתחתית.
+// אווטאר רק על הודעת הבוט האחרונה ברצף.
+// בועות גדולות "מציירות" קונטור באלכסון; בועות קצרות מופיעות בנעימות.
+// הופעה הדרגתית של בועות הפתיחה + smooth scroll על כל בועה חדשה.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -18,11 +17,15 @@ import {
   SOFT_FRAMING_TAIL_BY_MOTIVATION,
   ENDING_ACTIVE,
   ENDING_SOFT,
-  Q2_REPORT_NAMES,
   FINAL_CHOICE_PROMPT,
   FINAL_CHOICE_OPTIONS,
-  REPORT_ONLY_CLOSING,
+  NEXT_STEP_PROMPT,
   MEETING_CLOSING,
+  REENGAGEMENT_PROMPT,
+  REENGAGEMENT_OPTIONS,
+  REPORT_ONLY_CLOSING,
+  ANALYZING_TEXT,
+  TESTIMONIAL_IMAGES,
   pickVariant,
   type AudienceVariant,
   type OptionId,
@@ -66,13 +69,19 @@ type Item =
       title: string;
       text: string;
     }
+  | { kind: 'testimonials'; key: string; images: string[] }
   | { kind: 'error'; text: string; key: string };
 
 const LONG_THRESHOLD = 140;
 
-/** האם הפריט הוא "בצד הבוט" (ימין). אווטאר מוצג רק על האחרון ברצף כזה. */
 function isBotSide(kind: Item['kind']): boolean {
-  return kind === 'bot' || kind === 'hero' || kind === 'loading' || kind === 'result';
+  return (
+    kind === 'bot' ||
+    kind === 'hero' ||
+    kind === 'loading' ||
+    kind === 'result' ||
+    kind === 'testimonials'
+  );
 }
 
 export function ChatbotApp() {
@@ -83,30 +92,32 @@ export function ChatbotApp() {
   const emailRef = useRef('');
   const fullNameRef = useRef('');
   const phoneRef = useRef('');
-  const wantsMeetingRef = useRef<boolean>(false);
+  const initialChoiceRef = useRef<'with-meeting' | 'report-only' | null>(null);
+  const submittedRef = useRef(false);
 
-  // גלילה תמיד למטה. סנטינל שיושב בתחתית + scrollIntoView על כל שינוי + מספר
-  // ניסיונות בעיכובים שונים כדי לתפוס תמונות שנטענות מאוחר.
+  // ─── גלילה: smooth scroll לתחתית על כל פריט חדש; משתמש יכול לגלול למעלה
+  // ידנית (אנחנו מאפשרים לו, רק שולחים אותו חזרה לתחתית כשהוא קרוב לתחתית).
   const transcriptRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
+  const lastUserScrollAtRef = useRef(0);
 
-  const scrollToBottom = () => {
-    bottomSentinelRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+  const scrollToBottom = (smooth = true) => {
+    bottomSentinelRef.current?.scrollIntoView({
+      block: 'end',
+      behavior: smooth ? 'smooth' : 'auto',
+    });
   };
 
   useEffect(() => {
-    // ניסיונות מרובים — ה-DOM, התמונות והאנימציות מסתיימים בזמנים שונים
-    const timeouts = [0, 80, 250, 600, 1200].map((d) =>
-      setTimeout(scrollToBottom, d),
-    );
-    return () => timeouts.forEach(clearTimeout);
+    // אם המשתמש גלל ידנית ב-2.5 שניות האחרונות — לא נילחם בו.
+    const sinceUser = Date.now() - lastUserScrollAtRef.current;
+    if (sinceUser < 2500) return;
+    // ניסיונות מרובים כדי לתפוס תמונות שעולות / אנימציות שמשנות גובה
+    const ts = [50, 350, 900, 1500].map((d) => setTimeout(() => scrollToBottom(true), d));
+    return () => ts.forEach(clearTimeout);
   }, [items]);
 
-  // ResizeObserver עוקב אחרי תוכן השיחה — אם הגובה משתנה (תמונה נטענה,
-  // bubble מתרחב, אנימציה מסתיימת), כופה גלילה לתחתית. המשתמש יכול לגלול
-  // למעלה ידנית, אבל פריט חדש יחזיר אותו אוטומטית לתחתית — בדיוק כמו ב-WhatsApp.
-  // מעקב אחרי זמן הגלילה האחרונה הידנית כדי לא להילחם במשתמש שזה עתה גלל.
-  const lastUserScrollAtRef = useRef(0);
+  // עקיבה אחרי גלילה ידנית
   useEffect(() => {
     const el = transcriptRef.current;
     if (!el) return;
@@ -115,21 +126,11 @@ export function ChatbotApp() {
     };
     el.addEventListener('wheel', onWheel, { passive: true });
     el.addEventListener('touchmove', onWheel, { passive: true });
-    const ro = new ResizeObserver(() => {
-      // אם המשתמש גלל ידנית ב-2 שניות האחרונות, לא נכפה גלילה — שיוכל לקרוא
-      // אזור היסטורי. אחרי 2 שניות, חוזרים להצמיד לתחתית.
-      const sinceUser = Date.now() - lastUserScrollAtRef.current;
-      if (sinceUser < 2000) return;
-      el.scrollTop = el.scrollHeight;
-    });
-    Array.from(el.children).forEach((child) => ro.observe(child));
-    ro.observe(el);
     return () => {
-      ro.disconnect();
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('touchmove', onWheel);
     };
-  }, [items]);
+  }, []);
 
   // ─── append helpers ────────────────────────────────────────────────────
   const append = (item: Item) => setItems((arr) => [...arr, item]);
@@ -148,19 +149,43 @@ export function ChatbotApp() {
     );
   };
 
-  // ─── בועות פתיחה ─────────────────────────────────────────────────────────
+  // ─── הופעה הדרגתית של בועות הפתיחה ─────────────────────────────────────
   const introInitialized = useRef(false);
   useEffect(() => {
     if (introInitialized.current) return;
     introInitialized.current = true;
     const longIntro = INTRO_BUBBLES.slice(0, 5).join('\n\n');
-    const startQuestion = INTRO_BUBBLES[5];
-    setItems([
-      { kind: 'hero', key: 'hero' },
-      { kind: 'bot', text: longIntro, key: 'intro-long', length: 'long' },
-      { kind: 'bot', text: startQuestion, key: 'intro-start-q', length: 'short' },
-      { kind: 'start', key: 'start-btn', label: START_BUTTON_LABEL, onPick: () => handleStart() },
-    ]);
+    const startQ = INTRO_BUBBLES[5];
+
+    // Stage 0: hero מיד עם הטעינה
+    setItems([{ kind: 'hero', key: 'hero' }]);
+    // Stage 1: intro long (אחרי 700ms)
+    const t1 = setTimeout(
+      () => append({ kind: 'bot', text: longIntro, key: 'intro-long', length: 'long' }),
+      700,
+    );
+    // Stage 2: "שנתחיל?" (אחרי 2400ms)
+    const t2 = setTimeout(
+      () => append({ kind: 'bot', text: startQ, key: 'intro-start-q', length: 'short' }),
+      2400,
+    );
+    // Stage 3: כפתור "בואו נתחיל" (אחרי 2900ms)
+    const t3 = setTimeout(
+      () =>
+        append({
+          kind: 'start',
+          key: 'start-btn',
+          label: START_BUTTON_LABEL,
+          onPick: () => handleStart(),
+        }),
+      2900,
+    );
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── handlers ───────────────────────────────────────────────────────────
@@ -254,6 +279,8 @@ export function ChatbotApp() {
     }
 
     if (currentQid === 'Q12_FB') {
+      // לפי המשתמש: Q12_FB=C כבר לא מדלג ישר על Q13 — נכנס למסלול הסיום הרך
+      // עם הצעה פרטנית לפני איסוף פרטים.
       if (currentOid === 'C') {
         finishConversation(false);
       } else {
@@ -295,22 +322,48 @@ export function ChatbotApp() {
     });
   };
 
+  /** אחרי כל מסלול שאלות → מציגים טקסט סיום ואז 2-אופציות (פגישה / רק דוח). */
   const finishConversation = (active: boolean) => {
     const aud = audienceRef.current;
     if (!aud) return;
     appendBot(pickVariant(active ? ENDING_ACTIVE : ENDING_SOFT, aud));
-    appendBot(pickVariant(EMAIL_PROMPT, aud));
-    appendInput('email', 'name@example.com', isEmailValid, (v) => {
-      emailRef.current = v;
-      appendBot(pickVariant(NAME_PROMPT, aud));
-      appendInput('text', 'שם מלא', isNameValid, (val) => {
-        fullNameRef.current = val.trim();
-        appendBot(pickVariant(PHONE_PROMPT, aud));
-        appendInput('tel', '050-1234567', isPhoneValid, (p) => {
-          phoneRef.current = p;
-          appendFinalChoice();
+    appendBot(pickVariant(FINAL_CHOICE_PROMPT, aud));
+    appendInitialChoice();
+  };
+
+  const appendInitialChoice = () => {
+    const aud = audienceRef.current;
+    if (!aud) return;
+    const key = `final-${Date.now()}`;
+    append({
+      kind: 'options',
+      key,
+      options: [
+        { id: 'with-meeting', text: pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud) },
+        { id: 'report-only', text: pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud) },
+      ],
+      onPick: (id) => {
+        initialChoiceRef.current = id as 'with-meeting' | 'report-only';
+        const text =
+          id === 'with-meeting'
+            ? pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud)
+            : pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud);
+        resolveItem(key, text);
+        // ─── סדר איסוף: שם → מייל → טלפון ───
+        appendBot(pickVariant(NAME_PROMPT, aud));
+        appendInput('text', 'שם מלא', isNameValid, (name) => {
+          fullNameRef.current = name.trim();
+          appendBot(pickVariant(EMAIL_PROMPT, aud));
+          appendInput('email', 'name@example.com', isEmailValid, (em) => {
+            emailRef.current = em;
+            appendBot(pickVariant(PHONE_PROMPT, aud));
+            appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
+              phoneRef.current = ph;
+              void showSimulatorAndContinue();
+            });
+          });
         });
-      });
+      },
     });
   };
 
@@ -334,82 +387,105 @@ export function ChatbotApp() {
     });
   };
 
-  const appendFinalChoice = () => {
+  /** מציג בועת "מנתחים..." → תוצאה → תמונות → ענף לפי הבחירה הראשונית. */
+  const showSimulatorAndContinue = async () => {
     const aud = audienceRef.current;
     if (!aud) return;
-    appendBot(pickVariant(FINAL_CHOICE_PROMPT, aud));
-    const key = `final-${Date.now()}`;
-    append({
-      kind: 'options',
-      key,
-      options: [
-        { id: 'with-meeting', text: pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud) },
-        { id: 'report-only', text: pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud) },
-      ],
-      onPick: (id) => {
-        wantsMeetingRef.current = id === 'with-meeting';
-        const text =
-          id === 'with-meeting'
-            ? pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud)
-            : pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud);
-        resolveItem(key, text);
-        void submitToServer();
-      },
-    });
-  };
 
-  const submitToServer = async () => {
-    const aud = audienceRef.current;
-    if (!aud) return;
+    // Stage A: בועת analyzing (על המסך כ-1.5 שנייה)
     const loadingKey = `loading-${Date.now()}`;
     append({
       kind: 'loading',
       key: loadingKey,
-      text: 'מנתחים את התשובות שלכם ומפיקים את הדוח האישי…',
+      text: pickVariant(ANALYZING_TEXT, aud),
+    });
+    await delay(1500);
+
+    // Stage B: ניקוד client-side + הצגת תוצאה
+    const result = scoreQ2Submission(answersRef.current);
+    const reportContent = Q2_REPORTS[result.selectedReport];
+    setItems((arr) => arr.filter((it) => it.key !== loadingKey));
+    append({
+      kind: 'result',
+      key: `result-${Date.now()}`,
+      eyebrow: 'הניתוח שלכם מוכן',
+      title: reportContent.pdfReport.title, // הכותרת ההסברית המלאה (לא "בשלות גבוהה לפגישה")
+      text: reportContent.simulatorOutput,
     });
 
-    const result = scoreQ2Submission(answersRef.current);
+    // Stage C: תמונות עדויות (אחרי 1 שנייה כדי לתת לתוצאה להיכנס)
+    await delay(1100);
+    if (TESTIMONIAL_IMAGES.length > 0) {
+      append({ kind: 'testimonials', key: `tst-${Date.now()}`, images: TESTIMONIAL_IMAGES });
+    }
 
+    // Stage D: ענף לפי הבחירה הראשונית
+    await delay(900);
+    if (initialChoiceRef.current === 'with-meeting') {
+      // מסלול "פגישה": NEXT_STEP_PROMPT + MEETING_CLOSING + שליחה לשרת
+      appendBot(pickVariant(NEXT_STEP_PROMPT, aud));
+      await delay(700);
+      appendBot(pickVariant(MEETING_CLOSING, aud));
+      void submitToServer(true);
+    } else {
+      // מסלול "רק דוח": REENGAGEMENT_PROMPT + 2 אופציות
+      appendBot(pickVariant(REENGAGEMENT_PROMPT, aud));
+      await delay(400);
+      appendReengagementOptions();
+    }
+  };
+
+  const appendReengagementOptions = () => {
+    const aud = audienceRef.current;
+    if (!aud) return;
+    const key = `reengage-${Date.now()}`;
+    append({
+      kind: 'options',
+      key,
+      options: [
+        { id: 'with-meeting', text: pickVariant(REENGAGEMENT_OPTIONS.withMeeting, aud) },
+        { id: 'report-only', text: pickVariant(REENGAGEMENT_OPTIONS.reportOnly, aud) },
+      ],
+      onPick: (id) => {
+        const isMeeting = id === 'with-meeting';
+        const text = isMeeting
+          ? pickVariant(REENGAGEMENT_OPTIONS.withMeeting, aud)
+          : pickVariant(REENGAGEMENT_OPTIONS.reportOnly, aud);
+        resolveItem(key, text);
+        if (isMeeting) {
+          appendBot(pickVariant(MEETING_CLOSING, aud));
+        } else {
+          appendBot(pickVariant(REPORT_ONLY_CLOSING, aud));
+        }
+        void submitToServer(isMeeting);
+      },
+    });
+  };
+
+  /** שליחה לשרת ברקע — מייצרת PDF, מעלה ל-Supabase, מסנכרנת ל-Smoove.
+   *  אי-הצלחה לא משבשת את חוויית המשתמש (כבר קיבל את התוצאה ב-UI).
+   */
+  const submitToServer = async (wantsMeeting: boolean) => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    const aud = audienceRef.current;
+    if (!aud) return;
     try {
-      const payload = {
-        questionnaireId: 'q2',
-        audience: aud,
-        answers: Object.fromEntries(answersRef.current),
-        email: emailRef.current,
-        fullName: fullNameRef.current,
-        phone: phoneRef.current,
-        wantsMeeting: wantsMeetingRef.current,
-      };
-      const res = await fetch('/api/submit', {
+      await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          questionnaireId: 'q2',
+          audience: aud,
+          answers: Object.fromEntries(answersRef.current),
+          email: emailRef.current,
+          fullName: fullNameRef.current,
+          phone: phoneRef.current,
+          wantsMeeting,
+        }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'שגיאה לא צפויה' }));
-        throw new Error(err.error || 'השליחה נכשלה');
-      }
-
-      setItems((arr) => arr.filter((it) => it.key !== loadingKey));
-      const reportContent = Q2_REPORTS[result.selectedReport];
-      append({
-        kind: 'result',
-        key: `result-${Date.now()}`,
-        eyebrow: 'הניתוח שלכם מוכן',
-        title: Q2_REPORT_NAMES[result.selectedReport],
-        text: reportContent.simulatorOutput,
-      });
-      const closing = wantsMeetingRef.current
-        ? pickVariant(MEETING_CLOSING, aud)
-        : pickVariant(REPORT_ONLY_CLOSING, aud);
-      setTimeout(() => appendBot(closing), 900);
     } catch (err) {
-      setItems((arr) => arr.filter((it) => it.key !== loadingKey));
-      append({
-        kind: 'error',
-        key: `err-${Date.now()}`,
-        text: err instanceof Error ? err.message : 'שגיאה לא צפויה',
-      });
+      console.error('[chatbot] background submit failed:', err);
     }
   };
 
@@ -421,11 +497,9 @@ export function ChatbotApp() {
       <div className="chat-transcript" ref={transcriptRef}>
         {items.map((it, i) => {
           const next = items[i + 1];
-          // אווטאר מוצג רק כשהפריט הבא אינו בצד הבוט (כלומר זוהי ההודעה האחרונה ברצף הבוט).
           const showAvatar = !next || !isBotSide(next.kind);
           return renderItem(it, showAvatar);
         })}
-        {/* sentinel — scrollIntoView על האלמנט הזה גורם ל-transcript להגלול לתחתית */}
         <div ref={bottomSentinelRef} aria-hidden="true" />
       </div>
     </div>
@@ -457,14 +531,7 @@ function renderItem(it: Item, showAvatar: boolean) {
           <div className="bubble-bot-wrap bubble-hero">
             <div className="bubble-bot-frame" />
             <div className="bubble-bot-content">
-              {/* width/height מוגדרים מראש כדי שתפיסת המקום ב-DOM לא תקרה
-                  אחרי שהתמונה נטענת (הייתה משבשת את scrollTop). */}
-              <img
-                src="/q2/hero.jpg"
-                alt="צוות פניאל נדל״ן"
-                width={1500}
-                height={1000}
-              />
+              <img src="/q2/hero.jpg" alt="צוות פניאל נדל״ן" width={1500} height={1000} />
             </div>
           </div>
         </div>
@@ -537,6 +604,19 @@ function renderItem(it: Item, showAvatar: boolean) {
           </div>
         </div>
       );
+    case 'testimonials':
+      return (
+        <div key={it.key} className="bot-row bot-row-testimonials">
+          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
+          <div className="testimonials-grid">
+            {it.images.map((src, i) => (
+              <div key={src} className={`testimonial-card testimonial-card-${i + 1}`}>
+                <img src={src} alt={`עדות לקוח ${i + 1}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
     case 'error':
       return (
         <div key={it.key} className="chat-error">
@@ -548,21 +628,37 @@ function renderItem(it: Item, showAvatar: boolean) {
   }
 }
 
+/** טקסט בוט עם תמיכה ב-**bold** וקישורי URL אוטומטיים. */
 function BotText({ text }: { text: string }) {
-  const parts = text.split(/(https?:\/\/[^\s]+)/g);
-  return (
-    <>
-      {parts.map((p, i) =>
-        /^https?:\/\//.test(p) ? (
-          <a key={i} href={p} target="_blank" rel="noopener noreferrer">
-            {p}
-          </a>
-        ) : (
-          <span key={i}>{p}</span>
-        ),
-      )}
-    </>
-  );
+  return <>{parseInline(text)}</>;
+}
+
+function parseInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  // regex משולב: **bold** או URL
+  const re = /(\*\*[^*]+?\*\*)|(https?:\/\/[^\s]+)/g;
+  let m: RegExpExecArray | null;
+  let lastIdx = 0;
+  let key = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIdx) {
+      parts.push(<span key={key++}>{text.slice(lastIdx, m.index)}</span>);
+    }
+    if (m[1]) {
+      parts.push(<strong key={key++}>{m[1].slice(2, -2)}</strong>);
+    } else if (m[2]) {
+      parts.push(
+        <a key={key++} href={m[2]} target="_blank" rel="noopener noreferrer">
+          {m[2]}
+        </a>,
+      );
+    }
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < text.length) {
+    parts.push(<span key={key++}>{text.slice(lastIdx)}</span>);
+  }
+  return parts;
 }
 
 function InputBubble({ item }: { item: Extract<Item, { kind: 'input' }> }) {
@@ -633,4 +729,8 @@ function isNameValid(s: string): boolean {
 function isPhoneValid(s: string): boolean {
   const d = s.replace(/\D/g, '');
   return /^(0\d{8,9}|972\d{8,9})$/.test(d);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
