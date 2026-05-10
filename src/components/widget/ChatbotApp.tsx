@@ -1,10 +1,9 @@
 'use client';
 
-// V2 (q2) — צ'אטבוט בסגנון WhatsApp/Typebot.
-// מודל: כל פריט אינטראקטיבי (אופציות, שדה טקסט, צ'קבוקס, כפתור שליחה)
-// יושב ב-transcript עצמו — אין "input area" קבוע למטה.
-// בוט בצד ימין (לבן עם קונטור), משתמש בצד שמאל (ברנד מלא).
-// אנימציה: כל בועה נכנסת עם ציור הקונטור מלמעלה למטה (clip-path).
+// V2 (q2) — צ'אטבוט בסגנון Typebot/WhatsApp.
+// בוט בצד ימין עם אווטאר עיגולי (לוגו פניאל).
+// משתמש בצד שמאל — אופציות בועות, ללא צ'קבוקס.
+// אנימציה: בועות ארוכות "מציירות" קונטור אופקית, קצרות מופיעות בנעימות.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +18,10 @@ import {
   ENDING_ACTIVE,
   ENDING_SOFT,
   Q2_REPORT_NAMES,
+  FINAL_CHOICE_PROMPT,
+  FINAL_CHOICE_OPTIONS,
+  REPORT_ONLY_CLOSING,
+  MEETING_CLOSING,
   pickVariant,
   type AudienceVariant,
   type OptionId,
@@ -28,11 +31,12 @@ import {
 import { Q2_REPORTS } from '@/data/reports-q2';
 import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
 
-/** פריט בטרנסקריפט. הקבוצות "החיות" (אופציות / input / מטא-בחירה) הופכות
- *  ל-bubble-user סטטית אחרי שהמשתמש בוחר. */
+/** סוג בועה. בועות "long" מקבלות אנימציית "ציור" אופקית, "short" אנימציית פוף. */
+type BotLength = 'long' | 'short';
+
 type Item =
   | { kind: 'hero'; key: string }
-  | { kind: 'bot'; text: string; key: string }
+  | { kind: 'bot'; text: string; key: string; length: BotLength }
   | { kind: 'user'; text: string; key: string }
   | {
       kind: 'options';
@@ -54,11 +58,6 @@ type Item =
       validate: (v: string) => boolean;
       onSubmit: (v: string) => void;
     }
-  | {
-      kind: 'meeting-choice';
-      key: string;
-      onSubmit: (wantsMeeting: boolean) => void;
-    }
   | { kind: 'loading'; text: string; key: string }
   | {
       kind: 'result';
@@ -69,19 +68,18 @@ type Item =
     }
   | { kind: 'error'; text: string; key: string };
 
+const LONG_THRESHOLD = 140;
+
 export function ChatbotApp() {
   const [items, setItems] = useState<Item[]>([]);
-  const [audience, setAudience] = useState<AudienceVariant | null>(null);
-  // נשמר לקריאת התשובות האחרונות בתוך handlers (state stale-closure)
+  const [, setAudience] = useState<AudienceVariant | null>(null);
   const answersRef = useRef<Q2Answers>(new Map());
   const audienceRef = useRef<AudienceVariant | null>(null);
   const emailRef = useRef('');
   const fullNameRef = useRef('');
   const phoneRef = useRef('');
   const wantsMeetingRef = useRef<boolean>(false);
-  const endingActiveRef = useRef<boolean>(false);
 
-  // Auto-scroll לתחתית רק אחרי האינטראקציה הראשונה (אחרת נפספס את הפתיח)
   const transcriptRef = useRef<HTMLDivElement>(null);
   const hasInteractedRef = useRef(false);
   useEffect(() => {
@@ -95,55 +93,36 @@ export function ChatbotApp() {
   // ─── append helpers ────────────────────────────────────────────────────
   const append = (item: Item) => setItems((arr) => [...arr, item]);
 
-  const appendBot = (text: string, delay = 0) => {
+  const appendBot = (text: string) => {
     const key = `bot-${Date.now()}-${Math.random()}`;
-    if (delay > 0) {
-      setTimeout(() => append({ kind: 'bot', text, key }), delay);
-    } else {
-      append({ kind: 'bot', text, key });
-    }
+    const length: BotLength = text.length > LONG_THRESHOLD ? 'long' : 'short';
+    append({ kind: 'bot', text, key, length });
   };
 
-  const appendUser = (text: string) => {
-    const key = `user-${Date.now()}-${Math.random()}`;
-    append({ kind: 'user', text, key });
-  };
-
-  /** מחליף item אינטראקטיבי בבועת user (אחרי בחירה). */
   const resolveItem = (key: string, userText: string) => {
     setItems((arr) =>
       arr.map((it) =>
-        it.key === key
-          ? ({ kind: 'user', text: userText, key: it.key } as Item)
-          : it,
+        it.key === key ? ({ kind: 'user', text: userText, key: it.key } as Item) : it,
       ),
     );
   };
 
-  // ─── זרימה: בועות פתיחה (ב-mount) ──────────────────────────────────────
-  // הספק ביקש: כל הברכה כהודעה אחת ארוכה (היי...להתאים לכם יותר), ואז
-  // "שנתחיל?" כהודעה קצרה, ואז כפתור "בואו נתחיל" כבועה משמאל עם נקודת התראה.
+  // ─── זרימה: בועות פתיחה ─────────────────────────────────────────────────
   const introInitialized = useRef(false);
   useEffect(() => {
     if (introInitialized.current) return;
     introInitialized.current = true;
-    // INTRO_BUBBLES = 6 פריטים. נאחד את 5 הראשונים (החל מ"היי" ועד "להתאים לכם יותר")
     const longIntro = INTRO_BUBBLES.slice(0, 5).join('\n\n');
     const startQuestion = INTRO_BUBBLES[5]; // "שנתחיל?"
     setItems([
       { kind: 'hero', key: 'hero' },
-      { kind: 'bot', text: longIntro, key: 'intro-long' },
-      { kind: 'bot', text: startQuestion, key: 'intro-start-q' },
-      {
-        kind: 'start',
-        key: 'start-btn',
-        label: START_BUTTON_LABEL,
-        onPick: () => handleStart(),
-      },
+      { kind: 'bot', text: longIntro, key: 'intro-long', length: 'long' },
+      { kind: 'bot', text: startQuestion, key: 'intro-start-q', length: 'short' },
+      { kind: 'start', key: 'start-btn', label: START_BUTTON_LABEL, onPick: () => handleStart() },
     ]);
   }, []);
 
-  // ─── handler: התחלה ────────────────────────────────────────────────────
+  // ─── handlers ───────────────────────────────────────────────────────────
   const handleStart = () => {
     hasInteractedRef.current = true;
     resolveItem('start-btn', START_BUTTON_LABEL);
@@ -167,7 +146,6 @@ export function ChatbotApp() {
     });
   };
 
-  // ─── helper: שאלה רגילה ─────────────────────────────────────────────────
   const askQuestion = (qid: string, aud: AudienceVariant) => {
     const q = findQuestion(qid);
     appendBot(pickVariant(q.text, aud));
@@ -187,7 +165,6 @@ export function ChatbotApp() {
     });
   };
 
-  // ─── זרימה: התקדמות אחרי תשובה ──────────────────────────────────────────
   const advanceFlow = (currentQid: string, currentOid: OptionId) => {
     const aud = audienceRef.current;
     if (!aud) return;
@@ -252,7 +229,6 @@ export function ChatbotApp() {
     }
   };
 
-  // ─── מסך ריכוך + Q12_FB ─────────────────────────────────────────────────
   const showSoftFraming = (ans: Q2Answers) => {
     const aud = audienceRef.current;
     if (!aud) return;
@@ -279,11 +255,10 @@ export function ChatbotApp() {
     });
   };
 
-  // ─── סיום שאלות, מעבר לאיסוף פרטים ─────────────────────────────────────
+  /** סיום שאלות → מסך סיום-טקסט → איסוף פרטים → בחירה אחרונה → שליחה. */
   const finishConversation = (active: boolean) => {
     const aud = audienceRef.current;
     if (!aud) return;
-    endingActiveRef.current = active;
     appendBot(pickVariant(active ? ENDING_ACTIVE : ENDING_SOFT, aud));
     appendBot(pickVariant(EMAIL_PROMPT, aud));
     appendInput('email', 'name@example.com', isEmailValid, (v) => {
@@ -294,8 +269,8 @@ export function ChatbotApp() {
         appendBot(pickVariant(PHONE_PROMPT, aud));
         appendInput('tel', '050-1234567', isPhoneValid, (p) => {
           phoneRef.current = p;
-          // עכשיו שני "צ'קבוקס" כבועות + כפתור שליחה
-          appendMeetingChoice();
+          // המסך האחרון: שתי אופציות (פגישה / רק דוח).
+          appendFinalChoice();
         });
       });
     });
@@ -321,23 +296,30 @@ export function ChatbotApp() {
     });
   };
 
-  const appendMeetingChoice = () => {
-    const key = `meeting-${Date.now()}`;
+  const appendFinalChoice = () => {
+    const aud = audienceRef.current;
+    if (!aud) return;
+    appendBot(pickVariant(FINAL_CHOICE_PROMPT, aud));
+    const key = `final-${Date.now()}`;
     append({
-      kind: 'meeting-choice',
+      kind: 'options',
       key,
-      onSubmit: async (wantsMeeting) => {
-        wantsMeetingRef.current = wantsMeeting;
-        const chosenLabel = wantsMeeting
-          ? 'אשמח שתשלחו לי את הדוח המלא וגם תחזרו אליי לשיחת פיצוח'
-          : 'אשמח שתשלחו לי את הדוח המלא';
-        resolveItem(key, chosenLabel);
-        await submitToServer();
+      options: [
+        { id: 'with-meeting', text: pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud) },
+        { id: 'report-only', text: pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud) },
+      ],
+      onPick: (id) => {
+        wantsMeetingRef.current = id === 'with-meeting';
+        const text =
+          id === 'with-meeting'
+            ? pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud)
+            : pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud);
+        resolveItem(key, text);
+        void submitToServer();
       },
     });
   };
 
-  // ─── שליחה לשרת ────────────────────────────────────────────────────────
   const submitToServer = async () => {
     const aud = audienceRef.current;
     if (!aud) return;
@@ -370,7 +352,7 @@ export function ChatbotApp() {
         throw new Error(err.error || 'השליחה נכשלה');
       }
 
-      // הסרת בועת ה"טוען" + הופעת התוצאה
+      // הסר את "טוען" + הצג תוצאה
       setItems((arr) => arr.filter((it) => it.key !== loadingKey));
       const reportContent = Q2_REPORTS[result.selectedReport];
       append({
@@ -380,6 +362,12 @@ export function ChatbotApp() {
         title: Q2_REPORT_NAMES[result.selectedReport],
         text: reportContent.simulatorOutput,
       });
+      // הוסף טקסט סיום מותאם לפי בחירת המשתמש
+      const closing = wantsMeetingRef.current
+        ? pickVariant(MEETING_CLOSING, aud)
+        : pickVariant(REPORT_ONLY_CLOSING, aud);
+      // delay קל כדי שיראו את ה-result נכנסת לפני הסגירה
+      setTimeout(() => appendBot(closing), 700);
     } catch (err) {
       setItems((arr) => arr.filter((it) => it.key !== loadingKey));
       append({
@@ -390,14 +378,13 @@ export function ChatbotApp() {
     }
   };
 
-  // ─── רינדור ─────────────────────────────────────────────────────────────
   return (
     <div className="chatbot-root">
       <div className="chat-brandbar">
         <span className="chat-brandbar-name">פניאל נדל״ן · סימולטור משקיע</span>
       </div>
       <div className="chat-transcript" ref={transcriptRef}>
-        {items.map((it) => renderItem(it, audience))}
+        {items.map((it) => renderItem(it))}
       </div>
     </div>
   );
@@ -407,18 +394,34 @@ export function ChatbotApp() {
 // Renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function renderItem(it: Item, audience: AudienceVariant | null) {
+function BotAvatar() {
+  // אווטאר עיגולי עם הלוגו של פניאל. הלוגו רחב — אנחנו מציגים רק את ה"פ"
+  // הראשונה ע"י קליפ עגול + scale, כדי שתהיה תווית מותג בולטת ולא מילה דחוסה.
+  return (
+    <div className="bot-avatar" aria-hidden="true">
+      <span className="bot-avatar-letter">פ</span>
+    </div>
+  );
+}
+
+function renderItem(it: Item) {
   switch (it.kind) {
     case 'hero':
       return (
-        <div key={it.key} className="chat-hero">
-          <img src="/q2/hero.jpg" alt="צוות פניאל נדל״ן" />
+        <div key={it.key} className="bot-row bot-row-hero">
+          <BotAvatar />
+          <div className="chat-hero">
+            <img src="/q2/hero.jpg" alt="צוות פניאל נדל״ן" />
+          </div>
         </div>
       );
     case 'bot':
       return (
-        <div key={it.key} className="bubble-bot">
-          {it.text}
+        <div key={it.key} className="bot-row">
+          <BotAvatar />
+          <div className={`bubble-bot bubble-${it.length}`}>
+            <BotText text={it.text} />
+          </div>
         </div>
       );
     case 'user':
@@ -448,28 +451,30 @@ function renderItem(it: Item, audience: AudienceVariant | null) {
           <button type="button" className="start-bubble-btn" onClick={it.onPick}>
             {it.label}
           </button>
-          <span className="start-bubble-dot" aria-label="לחיצה נדרשת">
-            !
-          </span>
+          <span className="start-bubble-dot" aria-label="לחיצה נדרשת" />
         </div>
       );
     case 'input':
       return <InputBubble key={it.key} item={it} />;
-    case 'meeting-choice':
-      return <MeetingChoice key={it.key} item={it} />;
     case 'loading':
       return (
-        <div key={it.key} className="bubble-loading">
-          <span className="bubble-loading-spinner" aria-hidden="true" />
-          <span>{it.text}</span>
+        <div key={it.key} className="bot-row">
+          <BotAvatar />
+          <div className="bubble-loading">
+            <span className="bubble-loading-spinner" aria-hidden="true" />
+            <span>{it.text}</span>
+          </div>
         </div>
       );
     case 'result':
       return (
-        <div key={it.key} className="bubble-result">
-          <div className="bubble-result-eyebrow">{it.eyebrow}</div>
-          <h3 className="bubble-result-title">{it.title}</h3>
-          <div className="bubble-result-body">{it.text}</div>
+        <div key={it.key} className="bot-row">
+          <BotAvatar />
+          <div className="bubble-result">
+            <div className="bubble-result-eyebrow">{it.eyebrow}</div>
+            <h3 className="bubble-result-title">{it.title}</h3>
+            <div className="bubble-result-body">{it.text}</div>
+          </div>
         </div>
       );
     case 'error':
@@ -479,18 +484,29 @@ function renderItem(it: Item, audience: AudienceVariant | null) {
         </div>
       );
     default:
-      // exhaustive check
-      void audience;
       return null;
   }
 }
 
-/** input bubble — שדה טקסט עם כפתור "שליחה" משמאל. */
-function InputBubble({
-  item,
-}: {
-  item: Extract<Item, { kind: 'input' }>;
-}) {
+/** הצגת טקסט בוט עם זיהוי קישורים אוטומטי. */
+function BotText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <>
+      {parts.map((p, i) =>
+        /^https?:\/\//.test(p) ? (
+          <a key={i} href={p} target="_blank" rel="noopener noreferrer">
+            {p}
+          </a>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+function InputBubble({ item }: { item: Extract<Item, { kind: 'input' }> }) {
   const [value, setValue] = useState('');
   const ok = item.validate(value);
   return (
@@ -519,51 +535,6 @@ function InputBubble({
     </div>
   );
 }
-
-/** מסך הצ'קבוקס: שתי בועות (פגישה / רק דוח) + כפתור "שליחה". */
-function MeetingChoice({
-  item,
-}: {
-  item: Extract<Item, { kind: 'meeting-choice' }>;
-}) {
-  const [picked, setPicked] = useState<'with-meeting' | 'report-only' | null>(null);
-  return (
-    <>
-      <div className="bubble-options">
-        <button
-          type="button"
-          className="bubble-option-btn"
-          onClick={() => setPicked('with-meeting')}
-          style={picked === 'with-meeting' ? selectedStyle : undefined}
-        >
-          אשמח שתשלחו לי את הדוח המלא וגם תחזרו אליי לשיחת פיצוח
-        </button>
-        <button
-          type="button"
-          className="bubble-option-btn"
-          onClick={() => setPicked('report-only')}
-          style={picked === 'report-only' ? selectedStyle : undefined}
-        >
-          אשמח שתשלחו לי את הדוח המלא
-        </button>
-      </div>
-      <button
-        type="button"
-        className="bubble-input-send"
-        onClick={() => picked && item.onSubmit(picked === 'with-meeting')}
-        disabled={!picked}
-        style={{ marginTop: 4 }}
-      >
-        שליחה
-      </button>
-    </>
-  );
-}
-
-const selectedStyle: React.CSSProperties = {
-  outline: '3px solid rgba(0, 153, 255, 0.30)',
-  outlineOffset: '2px',
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants & Helpers

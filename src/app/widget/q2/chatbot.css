@@ -1,31 +1,33 @@
 /* V2 (q2) — chatbot.css
-   עיצוב flat בסגנון Typebot:
-   - בוט בצד ימין: בועה לבנה עם קונטור דק
-   - משתמש/אופציות בצד שמאל: בועה בצבע מותג מלא (ללא gradient)
-   - אנימציה: "ציור" הקונטור מלמעלה למטה (clip-path)
-   - אין input area נפרד למטה — הכל בתוך השיחה
+   - רקע כהה חיצוני, אזור שיחה לבן באמצע
+   - אווטאר עם הלוגו ליד כל הודעת בוט
+   - אנימציה: בועות גדולות "נמתחות" אופקית בזמן שהאווטאר יורד
+   - אופציות נכנסות מצד שמאל בסליידר
+   - בועה נבחרת = ללא אנימציה (סטטית)
 */
 
 :root {
   --brand: #0099ff;
   --brand-soft: #00cccc;
   --bot-bg: #ffffff;
-  --bot-border: #e2e8f0;
+  --bot-border: #b8c7d9;
   --text-dark: #0f1c2e;
   --text-muted: #475569;
   --shell-bg: #f6f8fb;
   --bubble-radius: 16px;
+  --avatar-size: 38px;
 }
 
-/* ביטול הרקע הכהה של V1 (widget-shell) שיורש מ-app/widget/layout.tsx */
+/* ─── ביטול הסטיילים של V1 (widget-shell) על q2 ─── */
 .widget-shell:has(.chatbot-shell) {
-  background: var(--shell-bg) !important;
+  background: transparent !important;
   padding: 0 !important;
 }
 .widget-shell:has(.chatbot-shell)::before {
   display: none !important;
 }
 
+/* ─── רקע חיצוני כהה ─── */
 .chatbot-shell {
   min-height: 100dvh;
   width: 100%;
@@ -35,11 +37,26 @@
   justify-content: center;
   padding: 0;
   box-sizing: border-box;
-  background: var(--shell-bg);
   color: var(--text-dark);
   direction: rtl;
+  background:
+    radial-gradient(ellipse 80% 60% at 30% 10%, rgba(0, 204, 204, 0.16), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 80% 90%, rgba(0, 153, 255, 0.16), transparent 55%),
+    linear-gradient(135deg, #051a2e 0%, #0a2540 50%, #051527 100%);
+  position: relative;
 }
 
+.chatbot-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* ─── הקופסה הלבנה הפנימית של השיחה ─── */
 .chatbot-root {
   width: 100%;
   max-width: 760px;
@@ -47,6 +64,7 @@
   flex-direction: column;
   background: #ffffff;
   position: relative;
+  z-index: 1;
 }
 
 @media (min-width: 720px) {
@@ -55,7 +73,7 @@
     border-radius: 18px;
     min-height: calc(100dvh - 48px);
     max-height: calc(100dvh - 48px);
-    box-shadow: 0 4px 32px -12px rgba(15, 28, 46, 0.08);
+    box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -68,101 +86,180 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 18px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--bot-border);
   background: #ffffff;
   flex-shrink: 0;
 }
 
 .chat-brandbar-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--brand);
   letter-spacing: 0.04em;
 }
 
-/* ─── רצועת השיחה — גוללת ──── */
+/* ─── רצועת השיחה ─── */
 .chat-transcript {
   flex: 1;
   overflow-y: auto;
   padding: 24px 18px 28px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   scroll-behavior: smooth;
 }
 
 @media (min-width: 720px) {
-  .chat-transcript { padding: 32px 32px 32px; }
+  .chat-transcript { padding: 32px 28px 32px; }
 }
 
-/* ─── תמונת hero (חצי רוחב, בצד ימין כהודעת בוט) ─── */
-.chat-hero {
-  /* RTL: flex-start = visual RIGHT (צד הבוט) */
+/* ─────────────────────────────────────────────────────────────────────── */
+/* ─── שורת בוט: אווטאר + בועה (RTL: flex-start = ימין) ─── */
+/* ─────────────────────────────────────────────────────────────────────── */
+.bot-row {
   align-self: flex-start;
-  max-width: 50%;
-  width: 50%;
+  max-width: 92%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  /* ב-RTL flex-direction: row טבעי הופך את הסדר. אווטאר אמור להיות בקצה הימני. */
+  flex-direction: row;
+}
+
+/* אווטאר (עיגול עם הלוגו) */
+.bot-avatar {
   flex-shrink: 0;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  animation: avatar-drop 460ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.bot-avatar img,
+.bot-avatar svg {
+  width: 78%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* אות "פ" כתחליף ללוגו (קומפקטי, ברור באווטאר קטן) */
+.bot-avatar-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-brand), 'Helvetica', Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brand);
+  line-height: 1;
+}
+
+@keyframes avatar-drop {
+  from { opacity: 0; transform: translateY(-26px) scale(0.7); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── בועת בוט ─── */
+.bubble-bot {
+  background: var(--bot-bg);
+  color: var(--text-dark);
+  padding: 16px 22px;
+  border-radius: var(--bubble-radius);
+  border: 3px solid var(--bot-border);
+  font-size: 18px;
+  line-height: 1.6;
+  font-weight: 500;
+  white-space: pre-wrap;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* בועה ארוכה: אנימציה של "ציור מרובע" — הקונטור נמתח אופקית */
+.bubble-bot.bubble-long {
+  animation: bubble-draw-long 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
+}
+
+@keyframes bubble-draw-long {
+  0%   { clip-path: inset(0 0 0 100%); }
+  100% { clip-path: inset(0 0 0 0%); }
+}
+
+/* בועה קצרה: פשוט מופיעה בנעימות */
+.bubble-bot.bubble-short {
+  animation: bubble-pop-short 360ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  transform-origin: top right;
+}
+
+@keyframes bubble-pop-short {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 720px) {
+  .bubble-bot { font-size: 16px; padding: 14px 18px; }
+  .bot-row { max-width: 96%; }
+}
+
+/* ─── תמונת hero (חצי רוחב, על צד הבוט) ─── */
+.bot-row-hero {
+  align-self: flex-start;
+  max-width: 60%;
+}
+
+.bot-row-hero .chat-hero {
+  flex: 1;
   border-radius: var(--bubble-radius);
   overflow: hidden;
-  border: 1.5px solid var(--bot-border);
+  border: 3px solid var(--bot-border);
   background: #ffffff;
-  animation: drawIn 600ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: bubble-draw-long 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.chat-hero img {
+.bot-row-hero .chat-hero img {
   display: block;
   width: 100%;
   height: auto;
 }
 
 @media (max-width: 720px) {
-  .chat-hero { max-width: 70%; width: 70%; }
-}
-
-/* ─── בועת בוט (ימין, לבנה, קונטור דק) ─── */
-.bubble-bot {
-  align-self: flex-start; /* RTL: flex-start = visual right */
-  max-width: 88%;
-  background: var(--bot-bg);
-  color: var(--text-dark);
-  padding: 18px 22px;
-  border-radius: var(--bubble-radius);
-  border: 1.5px solid var(--bot-border);
-  font-size: 17px;
-  line-height: 1.6;
-  font-weight: 500;
-  white-space: pre-wrap;
-  animation: drawIn 600ms cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-@media (max-width: 720px) {
-  .bubble-bot { font-size: 16px; padding: 16px 18px; max-width: 92%; }
+  .bot-row-hero { max-width: 80%; }
 }
 
 /* ─── בועת משתמש (שמאל, צבע מלא) ─── */
 .bubble-user {
-  align-self: flex-end; /* RTL: flex-end = visual left */
+  align-self: flex-end;
   background: var(--brand);
   color: #ffffff;
-  padding: 14px 20px;
+  padding: 14px 22px;
   border-radius: var(--bubble-radius);
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.5;
   font-weight: 600;
   text-align: center;
-  animation: drawIn 480ms cubic-bezier(0.4, 0, 0.2, 1) both;
-  /* רוחב יקבע ע"י קבוצת אופציות (max-content) או תוכן */
   max-width: 80%;
+  /* בועה שכבר נבחרה היא סטטית, אין אנימציה */
 }
 
-/* ─── קבוצת אופציות (כל הבועות באותו רוחב) ─── */
+/* ─── קבוצת אופציות (צד משתמש) ─── */
 .bubble-options {
-  align-self: flex-end; /* RTL: flex-end = visual left (צד המשתמש) */
+  align-self: flex-end;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   max-width: 80%;
+  width: max-content;
+  min-width: 200px;
 }
 
 .bubble-option-btn {
@@ -174,13 +271,19 @@
   border: none;
   border-radius: var(--bubble-radius);
   font-family: inherit;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.45;
   text-align: center;
   cursor: pointer;
   transition: background 180ms ease, transform 120ms ease;
-  animation: drawIn 480ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  /* כניסה מצד שמאל (cute slide) */
+  animation: option-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes option-slide-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .bubble-option-btn:hover {
@@ -191,54 +294,52 @@
   transform: scale(0.98);
 }
 
-/* אנימציה stagger לאופציות */
-.bubble-options .bubble-option-btn:nth-child(1) { animation-delay: 80ms; }
-.bubble-options .bubble-option-btn:nth-child(2) { animation-delay: 160ms; }
-.bubble-options .bubble-option-btn:nth-child(3) { animation-delay: 240ms; }
-.bubble-options .bubble-option-btn:nth-child(4) { animation-delay: 320ms; }
-.bubble-options .bubble-option-btn:nth-child(5) { animation-delay: 400ms; }
+/* stagger — האופציות נכנסות אחת אחרי השנייה */
+.bubble-options .bubble-option-btn:nth-child(1) { animation-delay: 60ms; }
+.bubble-options .bubble-option-btn:nth-child(2) { animation-delay: 140ms; }
+.bubble-options .bubble-option-btn:nth-child(3) { animation-delay: 220ms; }
+.bubble-options .bubble-option-btn:nth-child(4) { animation-delay: 300ms; }
+.bubble-options .bubble-option-btn:nth-child(5) { animation-delay: 380ms; }
 
-/* ─── "בואו נתחיל" — בועה קטנה משמאל עם נקודת התראה ─── */
+/* ─── "בואו נתחיל" ─── */
 .start-bubble-wrap {
-  align-self: flex-end; /* RTL: flex-end = visual left */
+  align-self: flex-end;
   position: relative;
-  animation: drawIn 480ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  /* לא חותכים את הנקודת ההתראה */
+  overflow: visible;
+  padding-top: 8px;
+  padding-left: 8px;
+  animation: option-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .start-bubble-btn {
   background: var(--brand);
   color: #ffffff;
-  padding: 12px 26px;
+  padding: 14px 30px;
   border: none;
   border-radius: var(--bubble-radius);
   font-family: inherit;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   cursor: pointer;
   transition: background 180ms ease;
-  position: relative;
 }
 
 .start-bubble-btn:hover {
   background: #0080d6;
 }
 
-/* נקודת "הודעה לא נקראה" */
+/* נקודת "הודעה לא נקראה" — ללא טקסט בפנים */
 .start-bubble-dot {
   position: absolute;
-  top: -4px;
-  left: -4px;
+  top: 0;
+  left: 0;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: #ef4444;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.20);
   animation: pulse-dot 1.6s ease-in-out infinite;
 }
 
@@ -247,28 +348,28 @@
   50% { transform: scale(1.18); }
 }
 
-/* ─── שדה טקסט (מייל / שם / טלפון) — בועת input משמאל ─── */
+/* ─── שדה טקסט (מייל / שם / טלפון) ─── */
 .bubble-input {
-  align-self: flex-end; /* RTL: flex-end = visual left */
+  align-self: flex-end;
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-width: 80%;
-  animation: drawIn 480ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: option-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .bubble-input-field {
   display: block;
   background: #ffffff;
-  border: 1.5px solid var(--brand);
+  border: 3px solid var(--brand);
   border-radius: var(--bubble-radius);
   padding: 14px 20px;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 17px;
   color: var(--text-dark);
   outline: none;
   width: 100%;
-  min-width: 240px;
+  min-width: 260px;
   text-align: right;
   transition: box-shadow 180ms ease;
   box-sizing: border-box;
@@ -281,17 +382,18 @@
 }
 
 .bubble-input-send {
-  align-self: flex-end; /* RTL: flex-end = visual left */
+  align-self: flex-end;
   background: var(--brand);
   color: #ffffff;
   padding: 12px 30px;
   border: none;
   border-radius: var(--bubble-radius);
   font-family: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: background 180ms ease;
+  width: max-content;
 }
 
 .bubble-input-send:hover:not(:disabled) {
@@ -305,25 +407,25 @@
 
 /* ─── בועת "טוען..." ─── */
 .bubble-loading {
-  align-self: flex-start; /* RTL: flex-start = visual right (צד הבוט) */
+  align-self: flex-start;
   max-width: 88%;
   background: #ffffff;
-  border: 1.5px solid var(--bot-border);
+  border: 3px solid var(--bot-border);
   color: var(--text-dark);
   padding: 16px 20px;
   border-radius: var(--bubble-radius);
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  animation: drawIn 480ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: bubble-pop-short 360ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
 
 .bubble-loading-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #e2e8f0;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid #e2e8f0;
   border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -332,25 +434,25 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── בועת תוצאה (פלט סימולטור) ─── */
+/* ─── בועת תוצאה (פלט סימולטור) — בועה גדולה, אנימציה ארוכה ─── */
 .bubble-result {
-  align-self: flex-start; /* RTL: flex-start = visual right */
-  max-width: 92%;
   background: #ffffff;
-  border: 1.5px solid var(--brand);
+  border: 3px solid var(--brand);
   color: var(--text-dark);
   padding: 22px 24px;
   border-radius: var(--bubble-radius);
   white-space: pre-wrap;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.65;
   font-weight: 500;
-  animation: drawIn 700ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  flex: 1;
+  animation: bubble-draw-long 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
 }
 
 .bubble-result-eyebrow {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--brand);
   letter-spacing: 0.10em;
@@ -361,7 +463,7 @@
 }
 
 .bubble-result-title {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--brand);
   margin: 0 0 12px 0;
@@ -376,7 +478,7 @@
 
 /* ─── הודעת שגיאה ─── */
 .chat-error {
-  align-self: flex-end; /* RTL: flex-end = visual left (כמו הודעת משתמש) */
+  align-self: flex-end;
   max-width: 80%;
   padding: 10px 14px;
   background: rgba(220, 38, 38, 0.06);
@@ -387,22 +489,9 @@
   font-weight: 500;
 }
 
-/* ─── אנימציית "ציור" הקונטור (clip-path top→bottom) ─── */
-@keyframes drawIn {
-  from {
-    clip-path: inset(0 0 100% 0);
-  }
-  to {
-    clip-path: inset(0 0 0% 0);
-  }
-}
-
-/* כשפותחים "אופציה אחרי בחירה" — היא נעלמת בצמצום (לא קופצת החוצה) */
-.bubble-option-btn.fading-out {
-  animation: fadeOut 220ms ease-out forwards;
-}
-
-@keyframes fadeOut {
-  from { opacity: 1; max-height: 80px; padding-top: 14px; padding-bottom: 14px; margin-top: 0; }
-  to { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -8px; overflow: hidden; }
+/* ─── קישור בתוך בועת בוט ─── */
+.bubble-bot a, .bubble-result-body a {
+  color: var(--brand);
+  text-decoration: underline;
+  font-weight: 600;
 }
