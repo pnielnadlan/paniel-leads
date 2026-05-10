@@ -38,6 +38,8 @@ type V2Payload = {
   email: string;
   fullName: string;
   phone: string;
+  /** המשתמש בחר באופציה "+ שיחת פיצוח" בסוף השאלון (במקום "רק דוח"). */
+  wantsMeeting: boolean;
 };
 
 type SubmitPayload = V1Payload | V2Payload;
@@ -200,9 +202,8 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
       phone: body.phone,
       capitalRange: scoring.capitalRange,
       reportUrl,
-      // ב-V2 אין צ'קבוקס "רוצה פגישה" — לא מוסיפים אוטומטית לרשימת הפגישות.
-      // הליד עדיין מסונכרן ל-Smoove עם i20=q2 + i19=reportUrl + i1=capital_range.
-      wantsMeeting: false,
+      // המשתמש בחר אם הוא רוצה גם שיחת פיצוח (→ list 968406) או רק דוח.
+      wantsMeeting: body.wantsMeeting,
       marketingConsent: true,
     });
   } catch (err) {
