@@ -1,11 +1,12 @@
 'use client';
 
 // V2 (q2) — צ'אטבוט.
-// אווטאר רק על הודעת הבוט האחרונה ברצף.
-// בועות גדולות "מציירות" קונטור באלכסון; בועות קצרות מופיעות בנעימות.
-// הופעה הדרגתית של בועות הפתיחה + smooth scroll על כל בועה חדשה.
+// אווטאר אחד יחיד (floating) שזז ברצף בתוך אזור השיחה — נצמד לראש הודעת
+// הבוט האחרונה. במעבר בין הודעות בוט-ל-בוט (ברצף) הוא מחליק חלק; בהופעה
+// "טרייה" (אחרי הודעת משתמש) הוא מופיע במקום בלי גלישה.
+// בועות גדולות "מציירות" קונטור באלכסון; קצרות מופיעות בנעימות.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Q2_QUESTIONS,
   Q12_FA,
@@ -96,8 +97,15 @@ export function ChatbotApp() {
   const initialChoiceRef = useRef<'with-meeting' | 'report-only' | null>(null);
   const submittedRef = useRef(false);
 
-  // ─── גלילה: smooth scroll לתחתית על כל פריט חדש; משתמש יכול לגלול למעלה
-  // ידנית (אנחנו מאפשרים לו, רק שולחים אותו חזרה לתחתית כשהוא קרוב לתחתית).
+  // ─── אווטאר floating ─────────────────────────────────────────────────────
+  // אחד בלבד, position absolute. נצמד לראש הודעת הבוט האחרונה. במעבר
+  // continuation (בוט→בוט) — מחליק חלק. ב"בורסט חדש" (אחרי הודעת משתמש) —
+  // מופיע במקום עם fade-in קל בלי גלילה.
+  const [avatarTop, setAvatarTop] = useState<number | null>(null);
+  const [avatarBurstId, setAvatarBurstId] = useState(0);
+  const [avatarSliding, setAvatarSliding] = useState(false);
+
+  // ─── גלילה ─────────────────────────────────────────────────────────────
   const transcriptRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const lastUserScrollAtRef = useRef(0);
@@ -138,6 +146,40 @@ export function ChatbotApp() {
       el.removeEventListener('touchmove', onWheel);
     };
   }, []);
+
+  // ─── חישוב מיקום האווטאר אחרי כל שינוי items ──────────────────────────
+  useLayoutEffect(() => {
+    const t = transcriptRef.current;
+    if (!t) return;
+    // מציאת ה-bot-side האחרון
+    let lastBotIdx = -1;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (isBotSide(items[i].kind)) {
+        lastBotIdx = i;
+        break;
+      }
+    }
+    if (lastBotIdx === -1) {
+      setAvatarTop(null);
+      return;
+    }
+    // ה-children של הטרנסקריפט: items + sentinel בסוף
+    const child = t.children[lastBotIdx] as HTMLElement | undefined;
+    if (!child) return;
+    const newTop = child.offsetTop;
+    // continuation = items[lastBotIdx-1] גם הוא bot-side
+    const isContinuation = lastBotIdx > 0 && isBotSide(items[lastBotIdx - 1].kind);
+    if (isContinuation) {
+      // חלקה — אנימציית CSS transition על top
+      setAvatarSliding(true);
+      setAvatarTop(newTop);
+    } else {
+      // בורסט חדש — bump key ל-remount + מיקום מיידי + fade-in
+      setAvatarSliding(false);
+      setAvatarTop(newTop);
+      setAvatarBurstId((k) => k + 1);
+    }
+  }, [items]);
 
   // ─── append helpers ────────────────────────────────────────────────────
   const append = (item: Item) => setItems((arr) => [...arr, item]);
@@ -530,11 +572,17 @@ export function ChatbotApp() {
         <span className="chat-brandbar-name">פניאל נדל״ן · סימולטור משקיע</span>
       </div>
       <div className="chat-transcript" ref={transcriptRef}>
-        {items.map((it, i) => {
-          const next = items[i + 1];
-          const showAvatar = !next || !isBotSide(next.kind);
-          return renderItem(it, showAvatar);
-        })}
+        {items.map((it) => renderItem(it))}
+        {avatarTop !== null && (
+          <div
+            key={`avatar-${avatarBurstId}`}
+            className={`floating-avatar ${avatarSliding ? 'sliding' : 'appearing'}`}
+            style={{ top: `${avatarTop}px` }}
+            aria-hidden="true"
+          >
+            <span className="bot-avatar-letter">פ</span>
+          </div>
+        )}
         <div ref={bottomSentinelRef} aria-hidden="true" />
       </div>
     </div>
@@ -545,24 +593,11 @@ export function ChatbotApp() {
 // Renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function BotAvatar() {
-  return (
-    <div className="bot-avatar" aria-hidden="true">
-      <span className="bot-avatar-letter">פ</span>
-    </div>
-  );
-}
-
-function AvatarSpacer() {
-  return <div className="bot-avatar-spacer" aria-hidden="true" />;
-}
-
-function renderItem(it: Item, showAvatar: boolean) {
+function renderItem(it: Item) {
   switch (it.kind) {
     case 'hero':
       return (
         <div key={it.key} className="bot-row">
-          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
           <div className="bubble-bot-wrap bubble-hero">
             <div className="bubble-bot-frame" />
             <div className="bubble-bot-content">
@@ -574,7 +609,6 @@ function renderItem(it: Item, showAvatar: boolean) {
     case 'bot':
       return (
         <div key={it.key} className="bot-row">
-          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
           <div className={`bubble-bot-wrap bubble-${it.length}`}>
             <div className="bubble-bot-frame" />
             <div className="bubble-bot-content">
@@ -618,7 +652,6 @@ function renderItem(it: Item, showAvatar: boolean) {
     case 'loading':
       return (
         <div key={it.key} className="bot-row">
-          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
           <div className="bubble-loading">
             <span className="bubble-loading-spinner" aria-hidden="true" />
             <span>{it.text}</span>
@@ -628,7 +661,6 @@ function renderItem(it: Item, showAvatar: boolean) {
     case 'result':
       return (
         <div key={it.key} className="bot-row">
-          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
           <div className="bubble-result-wrap">
             <div className="bubble-result-frame" />
             <div className="bubble-result-content">
@@ -642,7 +674,6 @@ function renderItem(it: Item, showAvatar: boolean) {
     case 'testimonials':
       return (
         <div key={it.key} className="bot-row bot-row-testimonials">
-          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
           <div className="testimonials-grid">
             {it.images.map((src, i) => (
               <div key={src} className={`testimonial-card testimonial-card-${i + 1}`}>
