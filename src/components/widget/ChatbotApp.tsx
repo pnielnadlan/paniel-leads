@@ -99,16 +99,15 @@ export function ChatbotApp() {
   const submittedRef = useRef(false);
 
   // ─── אווטאר floating ─────────────────────────────────────────────────────
-  // אחד בלבד, position absolute. ממוקם בקו ה-bottom של הודעת הבוט האחרונה.
-  // - בכל הוספת bubble (continuation): top מתעדכן → CSS transition מחליק
-  //   חלק לקו ה-bottom של הבועה החדשה (במקביל ל-clip-path של הריבוע).
-  // - מונט ראשון של בורסט (אחרי הודעת משתמש): key חדש → animation עם
-  //   translateY שיורדת מ-top של הבועה ל-bottom שלה, מסונכרנת בדיוק עם
-  //   הציור של הריבוע (אותו משך, אותו timing function).
+  // מודל פשוט בלי CSS animations:
+  // - top: תמיד = bubble.bottom - avatarSize/2 (מיקום הסופי של הבועה האחרונה)
+  // - transform.translateY: 0 בדרך כלל; ב"בורסט חדש" מוגדר תחילה ל-(-bubble.height)
+  //   כדי שהאווטאר ייראה ב-bubble.top, ואז ב-rAF הבא מועבר ל-0 כדי שה-transition
+  //   יתפוס וירד למקום הסופי במקביל לציור הריבוע.
   const [avatarTop, setAvatarTop] = useState<number | null>(null);
-  const [avatarDescent, setAvatarDescent] = useState(0);
+  const [avatarTranslateY, setAvatarTranslateY] = useState(0);
   const [avatarBurstId, setAvatarBurstId] = useState(0);
-  const [avatarFresh, setAvatarFresh] = useState(false);
+  const [avatarOpaque, setAvatarOpaque] = useState(false);
 
   // ─── גלילה ─────────────────────────────────────────────────────────────
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -156,7 +155,6 @@ export function ChatbotApp() {
   useLayoutEffect(() => {
     const t = transcriptRef.current;
     if (!t) return;
-    // מציאת ה-bot-side האחרון
     let lastBotIdx = -1;
     for (let i = items.length - 1; i >= 0; i--) {
       if (isBotSide(items[i].kind)) {
@@ -166,28 +164,37 @@ export function ChatbotApp() {
     }
     if (lastBotIdx === -1) {
       setAvatarTop(null);
+      setAvatarOpaque(false);
       return;
     }
     const child = t.children[lastBotIdx] as HTMLElement | undefined;
     if (!child) return;
 
-    // מיקום resting: מרכז האווטאר על קו ה-bottom של הבועה.
-    // עבור bubble קצרה (גובה < 80) — נשארים בראש כדי לא להיראות מוזרים.
-    const bubbleBottom = child.offsetTop + child.offsetHeight;
+    const bubbleHeight = child.offsetHeight;
+    const bubbleBottom = child.offsetTop + bubbleHeight;
     const restingTop = bubbleBottom - AVATAR_SIZE / 2;
-    // descent — כמה האווטאר ירד ב-animation מהמיקום ההתחלתי שלו (TOP של הבועה)
-    // ל-resting שלו (bottom). שווה לגובה הבועה.
-    const descent = child.offsetHeight;
 
     const isContinuation = lastBotIdx > 0 && isBotSide(items[lastBotIdx - 1].kind);
     setAvatarTop(restingTop);
-    setAvatarDescent(descent);
+
     if (isContinuation) {
-      setAvatarFresh(false); // CSS transition יחליק לבד
+      // continuation: רק לעדכן top, transition יחליק חלק
+      setAvatarTranslateY(0);
+      setAvatarOpaque(true);
     } else {
-      // בורסט חדש — bump key, אנימציית descent רצה
+      // בורסט חדש — 2-step:
+      // 1) mount עם transform=translateY(-bubbleHeight) → אווטאר ב-top של הבועה
+      // 2) ב-rAF הבא: transform=translateY(0) → transition יוריד אותו ל-bottom
       setAvatarBurstId((k) => k + 1);
-      setAvatarFresh(true);
+      setAvatarTranslateY(-bubbleHeight);
+      setAvatarOpaque(false);
+      // הודעה ל-rAF מאוחר יותר אחרי mount של ה-element
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setAvatarTranslateY(0);
+          setAvatarOpaque(true);
+        });
+      });
     }
   }, [items]);
 
@@ -588,13 +595,12 @@ export function ChatbotApp() {
         {avatarTop !== null && (
           <div
             key={`avatar-${avatarBurstId}`}
-            className={`floating-avatar ${avatarFresh ? 'fresh' : ''}`}
-            style={
-              {
-                top: `${avatarTop}px`,
-                '--avatar-descent': `${avatarDescent}px`,
-              } as React.CSSProperties
-            }
+            className="floating-avatar"
+            style={{
+              top: `${avatarTop}px`,
+              transform: `translateY(${avatarTranslateY}px)`,
+              opacity: avatarOpaque ? 1 : 0,
+            }}
             aria-hidden="true"
           >
             <span className="bot-avatar-letter">פ</span>
