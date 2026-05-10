@@ -1,9 +1,8 @@
 /* V2 (q2) — chatbot.css
-   - רקע כהה חיצוני, אזור שיחה לבן באמצע
-   - אווטאר עם הלוגו ליד כל הודעת בוט
-   - אנימציה: בועות גדולות "נמתחות" אופקית בזמן שהאווטאר יורד
-   - אופציות נכנסות מצד שמאל בסליידר
-   - בועה נבחרת = ללא אנימציה (סטטית)
+   - בוט בצד ימין עם אווטאר שמופיע רק בסוף רצף הודעות
+   - אנימציה: מסגרת "מצוירת" באלכסון מהפינה הימנית-עליונה לשמאלית-תחתונה
+   - התוכן מופיע ב-fade-in מהיר לקראת סוף ציור המסגרת
+   - אופציות נכנסות מצד שמאל בסליידר, איטי יותר
 */
 
 :root {
@@ -16,9 +15,17 @@
   --shell-bg: #f6f8fb;
   --bubble-radius: 16px;
   --avatar-size: 38px;
+  --row-gap: 10px;
+  /* משכי אנימציה — איטיים יותר לפי בקשת המשתמש */
+  --anim-long: 1000ms;          /* ציור מרובע ארוך */
+  --anim-short: 760ms;           /* פוף קצר */
+  --anim-option: 780ms;          /* סליידר אופציות מהצד */
+  --anim-avatar: 880ms;          /* ירידת אווטאר */
+  --anim-content-fade: 280ms;    /* fade in של התוכן */
+  --anim-content-delay-long: 720ms;
 }
 
-/* ─── ביטול הסטיילים של V1 (widget-shell) על q2 ─── */
+/* ─── ביטול הסטיילים של V1 (widget-shell) ─── */
 .widget-shell:has(.chatbot-shell) {
   background: transparent !important;
   padding: 0 !important;
@@ -56,7 +63,7 @@
   opacity: 0.5;
 }
 
-/* ─── הקופסה הלבנה הפנימית של השיחה ─── */
+/* ─── הקופסה הלבנה ─── */
 .chatbot-root {
   width: 100%;
   max-width: 760px;
@@ -71,14 +78,14 @@
   .chatbot-shell { padding: 24px; }
   .chatbot-root {
     border-radius: 18px;
-    min-height: calc(100dvh - 48px);
+    height: calc(100dvh - 48px);
     max-height: calc(100dvh - 48px);
     box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.45);
   }
 }
 
 @media (max-width: 720px) {
-  .chatbot-root { min-height: 100dvh; }
+  .chatbot-root { height: 100dvh; max-height: 100dvh; }
 }
 
 /* ─── סרגל מותג עליון ─── */
@@ -108,6 +115,8 @@
   flex-direction: column;
   gap: 16px;
   scroll-behavior: smooth;
+  /* תמיד מוצמד לתחתית בעת הוספת תוכן (overflow-anchor) */
+  overflow-anchor: auto;
 }
 
 @media (min-width: 720px) {
@@ -122,12 +131,17 @@
   max-width: 92%;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  /* ב-RTL flex-direction: row טבעי הופך את הסדר. אווטאר אמור להיות בקצה הימני. */
+  gap: var(--row-gap);
   flex-direction: row;
 }
 
-/* אווטאר (עיגול עם הלוגו) */
+/* רכיב placeholder לתפיסת המקום של האווטאר כשהוא לא מוצג */
+.bot-avatar-spacer {
+  flex-shrink: 0;
+  width: var(--avatar-size);
+  height: 1px; /* גובה מינימלי כדי לא להפריע ל-flex */
+}
+
 .bot-avatar {
   flex-shrink: 0;
   width: var(--avatar-size);
@@ -140,17 +154,9 @@
   justify-content: center;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  animation: avatar-drop 460ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation: avatar-drop var(--anim-avatar) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.bot-avatar img,
-.bot-avatar svg {
-  width: 78%;
-  height: auto;
-  object-fit: contain;
-}
-
-/* אות "פ" כתחליף ללוגו (קומפקטי, ברור באווטאר קטן) */
 .bot-avatar-letter {
   display: inline-flex;
   align-items: center;
@@ -165,78 +171,105 @@
 }
 
 @keyframes avatar-drop {
-  from { opacity: 0; transform: translateY(-26px) scale(0.7); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(-30px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ─── בועת בוט ─── */
-.bubble-bot {
-  background: var(--bot-bg);
-  color: var(--text-dark);
-  padding: 16px 22px;
+/* ─── מבנה בועת בוט: wrap + frame + content ─── */
+.bubble-bot-wrap {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
   border-radius: var(--bubble-radius);
+  /* ה-wrap עצמו אינו עם רקע/border — הם יושבים על ה-frame */
+}
+
+/* ה-frame הוא הריבוע המצויר — הוא מקבל את ה-clip-path */
+.bubble-bot-frame {
+  position: absolute;
+  inset: 0;
+  background: var(--bot-bg);
   border: 3px solid var(--bot-border);
+  border-radius: var(--bubble-radius);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* התוכן יושב מעל ה-frame */
+.bubble-bot-content {
+  position: relative;
+  z-index: 1;
+  padding: 16px 22px;
   font-size: 18px;
   line-height: 1.6;
   font-weight: 500;
   white-space: pre-wrap;
-  flex: 0 1 auto;
-  min-width: 0;
+  color: var(--text-dark);
 }
 
-/* בועה ארוכה: אנימציה של "ציור מרובע" — הקונטור נמתח אופקית */
-.bubble-bot.bubble-long {
-  animation: bubble-draw-long 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transform-origin: top right;
+/* ─── אנימציה ארוכה: ציור מרובע מהפינה הימנית-העליונה לשמאלית-תחתונה ─── */
+.bubble-bot-wrap.bubble-long .bubble-bot-frame {
+  animation: draw-rect var(--anim-long) cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-@keyframes bubble-draw-long {
-  0%   { clip-path: inset(0 0 0 100%); }
-  100% { clip-path: inset(0 0 0 0%); }
+@keyframes draw-rect {
+  from { clip-path: inset(0 0 100% 100%); }   /* רק הפינה הימנית-העליונה */
+  to   { clip-path: inset(0 0 0% 0%); }       /* כל המרובע */
 }
 
-/* בועה קצרה: פשוט מופיעה בנעימות */
-.bubble-bot.bubble-short {
-  animation: bubble-pop-short 360ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+/* התוכן מופיע ב-fade-in מהיר לקראת סוף ציור המסגרת */
+.bubble-bot-wrap.bubble-long .bubble-bot-content {
+  opacity: 0;
+  animation: content-fade-in var(--anim-content-fade) ease var(--anim-content-delay-long) forwards;
+}
+
+@keyframes content-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── אנימציה קצרה: פוף עדין (נשארת על ה-wrap, התוכן זז יחד) ─── */
+.bubble-bot-wrap.bubble-short {
+  animation: bubble-pop-short var(--anim-short) cubic-bezier(0.22, 1.2, 0.36, 1) both;
   transform-origin: top right;
 }
 
 @keyframes bubble-pop-short {
-  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@media (max-width: 720px) {
-  .bubble-bot { font-size: 16px; padding: 14px 18px; }
-  .bot-row { max-width: 96%; }
-}
-
-/* ─── תמונת hero (חצי רוחב, על צד הבוט) ─── */
-.bot-row-hero {
-  align-self: flex-start;
+/* ─── תמונת hero — אותה לוגיקה כמו בועה ארוכה ─── */
+.bubble-bot-wrap.bubble-hero {
   max-width: 60%;
+  width: 60%;
 }
 
-.bot-row-hero .chat-hero {
-  flex: 1;
-  border-radius: var(--bubble-radius);
-  overflow: hidden;
-  border: 3px solid var(--bot-border);
-  background: #ffffff;
-  animation: bubble-draw-long 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.bubble-bot-wrap.bubble-hero .bubble-bot-frame {
+  border-color: var(--bot-border);
+  animation: draw-rect var(--anim-long) cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-.bot-row-hero .chat-hero img {
+.bubble-bot-wrap.bubble-hero .bubble-bot-content {
+  padding: 0;
+  opacity: 0;
+  animation: content-fade-in var(--anim-content-fade) ease var(--anim-content-delay-long) forwards;
+}
+
+.bubble-bot-wrap.bubble-hero img {
   display: block;
   width: 100%;
   height: auto;
+  border-radius: calc(var(--bubble-radius) - 3px);
 }
 
 @media (max-width: 720px) {
-  .bot-row-hero { max-width: 80%; }
+  .bubble-bot-wrap.bubble-hero { max-width: 80%; width: 80%; }
+  .bubble-bot-content { font-size: 16px; padding: 14px 18px; }
+  .bot-row { max-width: 96%; }
 }
 
-/* ─── בועת משתמש (שמאל, צבע מלא) ─── */
+/* ─── בועת משתמש (שמאל, צבע מלא, ללא אנימציה כשהיא נבחרת) ─── */
 .bubble-user {
   align-self: flex-end;
   background: var(--brand);
@@ -248,7 +281,6 @@
   font-weight: 600;
   text-align: center;
   max-width: 80%;
-  /* בועה שכבר נבחרה היא סטטית, אין אנימציה */
 }
 
 /* ─── קבוצת אופציות (צד משתמש) ─── */
@@ -277,8 +309,7 @@
   text-align: center;
   cursor: pointer;
   transition: background 180ms ease, transform 120ms ease;
-  /* כניסה מצד שמאל (cute slide) */
-  animation: option-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: option-slide-in var(--anim-option) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes option-slide-in {
@@ -295,21 +326,20 @@
 }
 
 /* stagger — האופציות נכנסות אחת אחרי השנייה */
-.bubble-options .bubble-option-btn:nth-child(1) { animation-delay: 60ms; }
-.bubble-options .bubble-option-btn:nth-child(2) { animation-delay: 140ms; }
-.bubble-options .bubble-option-btn:nth-child(3) { animation-delay: 220ms; }
-.bubble-options .bubble-option-btn:nth-child(4) { animation-delay: 300ms; }
-.bubble-options .bubble-option-btn:nth-child(5) { animation-delay: 380ms; }
+.bubble-options .bubble-option-btn:nth-child(1) { animation-delay: 80ms; }
+.bubble-options .bubble-option-btn:nth-child(2) { animation-delay: 200ms; }
+.bubble-options .bubble-option-btn:nth-child(3) { animation-delay: 320ms; }
+.bubble-options .bubble-option-btn:nth-child(4) { animation-delay: 440ms; }
+.bubble-options .bubble-option-btn:nth-child(5) { animation-delay: 560ms; }
 
 /* ─── "בואו נתחיל" ─── */
 .start-bubble-wrap {
   align-self: flex-end;
   position: relative;
-  /* לא חותכים את הנקודת ההתראה */
   overflow: visible;
   padding-top: 8px;
   padding-left: 8px;
-  animation: option-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: option-slide-in var(--anim-option) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .start-bubble-btn {
@@ -329,7 +359,6 @@
   background: #0080d6;
 }
 
-/* נקודת "הודעה לא נקראה" — ללא טקסט בפנים */
 .start-bubble-dot {
   position: absolute;
   top: 0;
@@ -348,14 +377,14 @@
   50% { transform: scale(1.18); }
 }
 
-/* ─── שדה טקסט (מייל / שם / טלפון) ─── */
+/* ─── שדה טקסט ─── */
 .bubble-input {
   align-self: flex-end;
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-width: 80%;
-  animation: option-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: option-slide-in var(--anim-option) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .bubble-input-field {
@@ -407,8 +436,7 @@
 
 /* ─── בועת "טוען..." ─── */
 .bubble-loading {
-  align-self: flex-start;
-  max-width: 88%;
+  flex: 0 1 auto;
   background: #ffffff;
   border: 3px solid var(--bot-border);
   color: var(--text-dark);
@@ -419,7 +447,7 @@
   gap: 12px;
   font-size: 16px;
   font-weight: 600;
-  animation: bubble-pop-short 360ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation: bubble-pop-short var(--anim-short) cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
 
 .bubble-loading-spinner {
@@ -434,20 +462,35 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── בועת תוצאה (פלט סימולטור) — בועה גדולה, אנימציה ארוכה ─── */
-.bubble-result {
+/* ─── בועת תוצאה (פלט סימולטור) — אנימציה ארוכה ─── */
+.bubble-result-wrap {
+  position: relative;
+  flex: 1;
+  border-radius: var(--bubble-radius);
+}
+
+.bubble-result-frame {
+  position: absolute;
+  inset: 0;
   background: #ffffff;
   border: 3px solid var(--brand);
-  color: var(--text-dark);
-  padding: 22px 24px;
   border-radius: var(--bubble-radius);
+  z-index: 0;
+  pointer-events: none;
+  animation: draw-rect var(--anim-long) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.bubble-result-content {
+  position: relative;
+  z-index: 1;
+  padding: 22px 24px;
   white-space: pre-wrap;
   font-size: 17px;
   line-height: 1.65;
   font-weight: 500;
-  flex: 1;
-  animation: bubble-draw-long 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transform-origin: top right;
+  color: var(--text-dark);
+  opacity: 0;
+  animation: content-fade-in var(--anim-content-fade) ease var(--anim-content-delay-long) forwards;
 }
 
 .bubble-result-eyebrow {
@@ -490,7 +533,7 @@
 }
 
 /* ─── קישור בתוך בועת בוט ─── */
-.bubble-bot a, .bubble-result-body a {
+.bubble-bot-content a, .bubble-result-body a {
   color: var(--brand);
   text-decoration: underline;
   font-weight: 600;

@@ -1,9 +1,10 @@
 'use client';
 
-// V2 (q2) — צ'אטבוט בסגנון Typebot/WhatsApp.
-// בוט בצד ימין עם אווטאר עיגולי (לוגו פניאל).
-// משתמש בצד שמאל — אופציות בועות, ללא צ'קבוקס.
-// אנימציה: בועות ארוכות "מציירות" קונטור אופקית, קצרות מופיעות בנעימות.
+// V2 (q2) — צ'אטבוט.
+// אווטאר מופיע רק בהודעת בוט האחרונה ברצף (כמו ב-WhatsApp).
+// בועות ארוכות: מסגרת מצוירת מהפינה הימנית-עליונה לשמאלית-תחתונה.
+// בועות קצרות: פוף עדין.
+// גלילה: תמיד מוצמדת לתחתית.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -31,7 +32,6 @@ import {
 import { Q2_REPORTS } from '@/data/reports-q2';
 import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
 
-/** סוג בועה. בועות "long" מקבלות אנימציית "ציור" אופקית, "short" אנימציית פוף. */
 type BotLength = 'long' | 'short';
 
 type Item =
@@ -70,6 +70,11 @@ type Item =
 
 const LONG_THRESHOLD = 140;
 
+/** האם הפריט הוא "בצד הבוט" (ימין). אווטאר מוצג רק על האחרון ברצף כזה. */
+function isBotSide(kind: Item['kind']): boolean {
+  return kind === 'bot' || kind === 'hero' || kind === 'loading' || kind === 'result';
+}
+
 export function ChatbotApp() {
   const [items, setItems] = useState<Item[]>([]);
   const [, setAudience] = useState<AudienceVariant | null>(null);
@@ -80,14 +85,16 @@ export function ChatbotApp() {
   const phoneRef = useRef('');
   const wantsMeetingRef = useRef<boolean>(false);
 
+  // גלילה תמיד למטה — גם בטעינה ראשונה
   const transcriptRef = useRef<HTMLDivElement>(null);
-  const hasInteractedRef = useRef(false);
   useEffect(() => {
-    if (!hasInteractedRef.current) return;
     const el = transcriptRef.current;
-    if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    }
+    if (!el) return;
+    // גלילה ל-bottom; instant ברנדר הראשון (אין אנימציית גלילה מטרידה),
+    // smooth אחרי כן
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
   }, [items]);
 
   // ─── append helpers ────────────────────────────────────────────────────
@@ -107,13 +114,13 @@ export function ChatbotApp() {
     );
   };
 
-  // ─── זרימה: בועות פתיחה ─────────────────────────────────────────────────
+  // ─── בועות פתיחה ─────────────────────────────────────────────────────────
   const introInitialized = useRef(false);
   useEffect(() => {
     if (introInitialized.current) return;
     introInitialized.current = true;
     const longIntro = INTRO_BUBBLES.slice(0, 5).join('\n\n');
-    const startQuestion = INTRO_BUBBLES[5]; // "שנתחיל?"
+    const startQuestion = INTRO_BUBBLES[5];
     setItems([
       { kind: 'hero', key: 'hero' },
       { kind: 'bot', text: longIntro, key: 'intro-long', length: 'long' },
@@ -124,7 +131,6 @@ export function ChatbotApp() {
 
   // ─── handlers ───────────────────────────────────────────────────────────
   const handleStart = () => {
-    hasInteractedRef.current = true;
     resolveItem('start-btn', START_BUTTON_LABEL);
     appendBot(AUDIENCE_QUESTION.text);
     appendAudienceOptions();
@@ -255,7 +261,6 @@ export function ChatbotApp() {
     });
   };
 
-  /** סיום שאלות → מסך סיום-טקסט → איסוף פרטים → בחירה אחרונה → שליחה. */
   const finishConversation = (active: boolean) => {
     const aud = audienceRef.current;
     if (!aud) return;
@@ -269,7 +274,6 @@ export function ChatbotApp() {
         appendBot(pickVariant(PHONE_PROMPT, aud));
         appendInput('tel', '050-1234567', isPhoneValid, (p) => {
           phoneRef.current = p;
-          // המסך האחרון: שתי אופציות (פגישה / רק דוח).
           appendFinalChoice();
         });
       });
@@ -352,7 +356,6 @@ export function ChatbotApp() {
         throw new Error(err.error || 'השליחה נכשלה');
       }
 
-      // הסר את "טוען" + הצג תוצאה
       setItems((arr) => arr.filter((it) => it.key !== loadingKey));
       const reportContent = Q2_REPORTS[result.selectedReport];
       append({
@@ -362,12 +365,10 @@ export function ChatbotApp() {
         title: Q2_REPORT_NAMES[result.selectedReport],
         text: reportContent.simulatorOutput,
       });
-      // הוסף טקסט סיום מותאם לפי בחירת המשתמש
       const closing = wantsMeetingRef.current
         ? pickVariant(MEETING_CLOSING, aud)
         : pickVariant(REPORT_ONLY_CLOSING, aud);
-      // delay קל כדי שיראו את ה-result נכנסת לפני הסגירה
-      setTimeout(() => appendBot(closing), 700);
+      setTimeout(() => appendBot(closing), 900);
     } catch (err) {
       setItems((arr) => arr.filter((it) => it.key !== loadingKey));
       append({
@@ -384,7 +385,12 @@ export function ChatbotApp() {
         <span className="chat-brandbar-name">פניאל נדל״ן · סימולטור משקיע</span>
       </div>
       <div className="chat-transcript" ref={transcriptRef}>
-        {items.map((it) => renderItem(it))}
+        {items.map((it, i) => {
+          const next = items[i + 1];
+          // אווטאר מוצג רק כשהפריט הבא אינו בצד הבוט (כלומר זוהי ההודעה האחרונה ברצף הבוט).
+          const showAvatar = !next || !isBotSide(next.kind);
+          return renderItem(it, showAvatar);
+        })}
       </div>
     </div>
   );
@@ -395,8 +401,6 @@ export function ChatbotApp() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function BotAvatar() {
-  // אווטאר עיגולי עם הלוגו של פניאל. הלוגו רחב — אנחנו מציגים רק את ה"פ"
-  // הראשונה ע"י קליפ עגול + scale, כדי שתהיה תווית מותג בולטת ולא מילה דחוסה.
   return (
     <div className="bot-avatar" aria-hidden="true">
       <span className="bot-avatar-letter">פ</span>
@@ -404,23 +408,33 @@ function BotAvatar() {
   );
 }
 
-function renderItem(it: Item) {
+function AvatarSpacer() {
+  return <div className="bot-avatar-spacer" aria-hidden="true" />;
+}
+
+function renderItem(it: Item, showAvatar: boolean) {
   switch (it.kind) {
     case 'hero':
       return (
-        <div key={it.key} className="bot-row bot-row-hero">
-          <BotAvatar />
-          <div className="chat-hero">
-            <img src="/q2/hero.jpg" alt="צוות פניאל נדל״ן" />
+        <div key={it.key} className="bot-row">
+          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
+          <div className="bubble-bot-wrap bubble-hero">
+            <div className="bubble-bot-frame" />
+            <div className="bubble-bot-content">
+              <img src="/q2/hero.jpg" alt="צוות פניאל נדל״ן" />
+            </div>
           </div>
         </div>
       );
     case 'bot':
       return (
         <div key={it.key} className="bot-row">
-          <BotAvatar />
-          <div className={`bubble-bot bubble-${it.length}`}>
-            <BotText text={it.text} />
+          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
+          <div className={`bubble-bot-wrap bubble-${it.length}`}>
+            <div className="bubble-bot-frame" />
+            <div className="bubble-bot-content">
+              <BotText text={it.text} />
+            </div>
           </div>
         </div>
       );
@@ -459,7 +473,7 @@ function renderItem(it: Item) {
     case 'loading':
       return (
         <div key={it.key} className="bot-row">
-          <BotAvatar />
+          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
           <div className="bubble-loading">
             <span className="bubble-loading-spinner" aria-hidden="true" />
             <span>{it.text}</span>
@@ -469,11 +483,14 @@ function renderItem(it: Item) {
     case 'result':
       return (
         <div key={it.key} className="bot-row">
-          <BotAvatar />
-          <div className="bubble-result">
-            <div className="bubble-result-eyebrow">{it.eyebrow}</div>
-            <h3 className="bubble-result-title">{it.title}</h3>
-            <div className="bubble-result-body">{it.text}</div>
+          {showAvatar ? <BotAvatar /> : <AvatarSpacer />}
+          <div className="bubble-result-wrap">
+            <div className="bubble-result-frame" />
+            <div className="bubble-result-content">
+              <div className="bubble-result-eyebrow">{it.eyebrow}</div>
+              <h3 className="bubble-result-title">{it.title}</h3>
+              <div className="bubble-result-body">{it.text}</div>
+            </div>
           </div>
         </div>
       );
@@ -488,7 +505,6 @@ function renderItem(it: Item) {
   }
 }
 
-/** הצגת טקסט בוט עם זיהוי קישורים אוטומטי. */
 function BotText({ text }: { text: string }) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
   return (
