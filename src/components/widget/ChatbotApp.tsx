@@ -552,7 +552,7 @@ function MeetingChoice({
         className="bubble-input-send"
         onClick={() => picked && item.onSubmit(picked === 'with-meeting')}
         disabled={!picked}
-        style={{ alignSelf: 'flex-start', marginTop: 4 }}
+        style={{ marginTop: 4 }}
       >
         שליחה
       </button>
