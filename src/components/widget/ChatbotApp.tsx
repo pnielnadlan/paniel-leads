@@ -155,6 +155,20 @@ export function ChatbotApp() {
     };
   }, []);
 
+  // postMessage לאתר ההורה בכל הוספת בועה — מאפשר לאתר ההורה לגלול את ה-iframe
+  // לתוך הצפייה (כדי שמשתמש שמטמיע אותנו ב-Elementor יראה תמיד את הקצה התחתון
+  // של השיחה ולא יצטרך לגלול ידנית).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.parent && window.parent !== window) {
+      try {
+        window.parent.postMessage({ type: 'paniel-q2-update' }, '*');
+      } catch {
+        // cross-origin postMessage failed — לא נורא, פשוט לא תגלוש האתר ההורה
+      }
+    }
+  }, [items]);
+
   // ─── חישוב מיקום האווטאר אחרי כל שינוי items ──────────────────────────
   useLayoutEffect(() => {
     const t = transcriptRef.current;
