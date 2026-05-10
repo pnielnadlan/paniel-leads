@@ -17,8 +17,18 @@
   --bubble-radius: 16px;
 }
 
+/* ביטול הרקע הכהה של V1 (widget-shell) שיורש מ-app/widget/layout.tsx */
+.widget-shell:has(.chatbot-shell) {
+  background: var(--shell-bg) !important;
+  padding: 0 !important;
+}
+.widget-shell:has(.chatbot-shell)::before {
+  display: none !important;
+}
+
 .chatbot-shell {
   min-height: 100dvh;
+  width: 100%;
   font-family: var(--font-brand);
   display: flex;
   align-items: stretch;
