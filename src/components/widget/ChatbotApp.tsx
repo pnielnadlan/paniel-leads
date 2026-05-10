@@ -105,23 +105,32 @@ export function ChatbotApp() {
   }, [items]);
 
   // ResizeObserver עוקב אחרי תוכן השיחה — אם הגובה משתנה (תמונה נטענה,
-  // bubble מתרחב), נגלול שוב. גם נוקרא בטעינה ראשונה.
+  // bubble מתרחב, אנימציה מסתיימת), כופה גלילה לתחתית. המשתמש יכול לגלול
+  // למעלה ידנית, אבל פריט חדש יחזיר אותו אוטומטית לתחתית — בדיוק כמו ב-WhatsApp.
+  // מעקב אחרי זמן הגלילה האחרונה הידנית כדי לא להילחם במשתמש שזה עתה גלל.
+  const lastUserScrollAtRef = useRef(0);
   useEffect(() => {
     const el = transcriptRef.current;
     if (!el) return;
+    const onWheel = () => {
+      lastUserScrollAtRef.current = Date.now();
+    };
+    el.addEventListener('wheel', onWheel, { passive: true });
+    el.addEventListener('touchmove', onWheel, { passive: true });
     const ro = new ResizeObserver(() => {
-      // אם המשתמש כבר גלל למעלה ידנית, לא דוחפים אותו חזרה למטה.
-      // נחשב: אם הוא בתוך 80px מהתחתית — נחזיר אותו לתחתית.
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      if (distanceFromBottom < 80) {
-        el.scrollTop = el.scrollHeight;
-      }
+      // אם המשתמש גלל ידנית ב-2 שניות האחרונות, לא נכפה גלילה — שיוכל לקרוא
+      // אזור היסטורי. אחרי 2 שניות, חוזרים להצמיד לתחתית.
+      const sinceUser = Date.now() - lastUserScrollAtRef.current;
+      if (sinceUser < 2000) return;
+      el.scrollTop = el.scrollHeight;
     });
-    // צופים בכל פריט בתוך הטרנסקריפט
     Array.from(el.children).forEach((child) => ro.observe(child));
-    // וגם בטרנסקריפט עצמו (לשינויי גודל container)
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchmove', onWheel);
+    };
   }, [items]);
 
   // ─── append helpers ────────────────────────────────────────────────────
