@@ -114,9 +114,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  scroll-behavior: smooth;
-  /* תמיד מוצמד לתחתית בעת הוספת תוכן (overflow-anchor) */
-  overflow-anchor: auto;
+  scroll-behavior: auto; /* not smooth — אנחנו רוצים גלילות מיידיות לתחתית */
+  overflow-anchor: none; /* נשלוט בגלילה ידנית; דריסת ה-default */
 }
 
 @media (min-width: 720px) {

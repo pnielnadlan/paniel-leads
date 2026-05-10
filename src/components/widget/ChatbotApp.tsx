@@ -85,23 +85,21 @@ export function ChatbotApp() {
   const phoneRef = useRef('');
   const wantsMeetingRef = useRef<boolean>(false);
 
-  // גלילה תמיד למטה — כולל ברנדר הראשון. עוקבים אחרי שינויי גודל (תמונות
-  // נטענות אסינכרונית, גובה bubble משתנה אחרי אנימציות) ב-ResizeObserver
-  // כדי לא לפספס את הגלילה.
+  // גלילה תמיד למטה. סנטינל שיושב בתחתית + scrollIntoView על כל שינוי + מספר
+  // ניסיונות בעיכובים שונים כדי לתפוס תמונות שנטענות מאוחר.
   const transcriptRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    const el = transcriptRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    bottomSentinelRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
   };
 
   useEffect(() => {
-    requestAnimationFrame(scrollToBottom);
-    // גלילה נוספת אחרי שתמונות יטענו / animation יסתיים
-    const t = setTimeout(scrollToBottom, 250);
-    return () => clearTimeout(t);
+    // ניסיונות מרובים — ה-DOM, התמונות והאנימציות מסתיימים בזמנים שונים
+    const timeouts = [0, 80, 250, 600, 1200].map((d) =>
+      setTimeout(scrollToBottom, d),
+    );
+    return () => timeouts.forEach(clearTimeout);
   }, [items]);
 
   // ResizeObserver עוקב אחרי תוכן השיחה — אם הגובה משתנה (תמונה נטענה,
@@ -427,6 +425,8 @@ export function ChatbotApp() {
           const showAvatar = !next || !isBotSide(next.kind);
           return renderItem(it, showAvatar);
         })}
+        {/* sentinel — scrollIntoView על האלמנט הזה גורם ל-transcript להגלול לתחתית */}
+        <div ref={bottomSentinelRef} aria-hidden="true" />
       </div>
     </div>
   );
