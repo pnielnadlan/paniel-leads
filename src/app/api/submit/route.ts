@@ -1,8 +1,8 @@
 // POST /api/submit
-// מקבל את הגשת השאלון, מבצע ניקוד צד-שרת, מייצר PDF, מעלה לאחסון, ושולח ל-Smoove.
+// מקבל הגשת שאלון (V1 או V2), מבצע ניקוד צד-שרת, מייצר PDF, מעלה לאחסון, ושולח ל-Smoove.
 //
-// כרגע: Supabase ו-Smoove במצב STUB עד שהלקוח יספק credentials.
-// כשיהיו — מחליפים את uploadPdfStub/sendToSmoveStub במימוש האמיתי.
+// V1 (q1) — שאלון "מסכים" של 13 שאלות, 25 דוחות (פרופיל × פוקוס).
+// V2 (q2) — שאלון "צ'אטבוט" של 13 שאלות מוערכות, 6 דוחות (R1-R6).
 
 import { NextResponse } from 'next/server';
 import { scoreSubmission, type Answers } from '@/lib/scoring';
@@ -12,13 +12,16 @@ import { generatePdf } from '@/lib/pdf-generator';
 import { uploadReportPdf } from '@/lib/supabase';
 import { syncContactToSmoove } from '@/lib/smoove';
 import { type OptionId } from '@/data/questions';
+import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
+import { renderQ2Report } from '@/lib/render-q2';
+import { buildQ2PdfHtml } from '@/lib/pdf-html-q2';
+import type { OptionId as Q2OptionId, AudienceVariant } from '@/data/questions-q2';
 
-// משך מקסימלי — Puppeteer יכול לקחת כמה שניות במיוחד ב-cold start
 export const maxDuration = 60;
-// puppeteer דורש Node runtime (לא Edge)
 export const runtime = 'nodejs';
 
-type SubmitPayload = {
+type V1Payload = {
+  questionnaireId?: 'q1';
   answers: Record<string, OptionId>;
   email: string;
   fullName: string;
@@ -28,13 +31,26 @@ type SubmitPayload = {
   marketingConsent: boolean;
 };
 
+type V2Payload = {
+  questionnaireId: 'q2';
+  audience: AudienceVariant;
+  answers: Record<string, Q2OptionId>;
+  email: string;
+  fullName: string;
+  phone: string;
+};
+
+type SubmitPayload = V1Payload | V2Payload;
+
 type SubmitResult = {
   ok: true;
   reportId: string;
   reportUrl: string;
 };
 
-export async function POST(request: Request): Promise<NextResponse<SubmitResult | { error: string }>> {
+export async function POST(
+  request: Request,
+): Promise<NextResponse<SubmitResult | { error: string }>> {
   let body: SubmitPayload;
   try {
     body = (await request.json()) as SubmitPayload;
@@ -42,7 +58,7 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  // ─── ולידציה בסיסית ─────────────────────────────────────────────────────
+  // ─── ולידציה משותפת ─────────────────────────────────────────────────────
   if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
     return NextResponse.json({ error: 'מייל לא תקין' }, { status: 400 });
   }
@@ -53,7 +69,17 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
     return NextResponse.json({ error: 'תשובות חסרות' }, { status: 400 });
   }
 
-  // ─── המרה ל-Map וניקוד ─────────────────────────────────────────────────
+  if (body.questionnaireId === 'q2') {
+    return handleV2(body);
+  }
+  return handleV1(body);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V1 (q1) — flow קיים
+// ────────────────────────────────────────────────────────────────────────────
+
+async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { error: string }>> {
   const answers: Answers = new Map();
   for (const [k, v] of Object.entries(body.answers)) {
     answers.set(Number(k), v);
@@ -69,7 +95,6 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
     );
   }
 
-  // ─── רינדור הטמפלייט ───────────────────────────────────────────────────
   const rendered = renderTemplate({
     reportId: scoring.reportId,
     fullName: body.fullName.trim(),
@@ -77,32 +102,30 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
     hasExistingProperty: scoring.hasExistingProperty,
   });
 
-  // ─── ייצור PDF ────────────────────────────────────────────────────────
   let pdfBuffer: Buffer;
   try {
     const html = buildPdfHtml(rendered);
     pdfBuffer = await generatePdf(html);
   } catch (err) {
-    console.error('[submit] PDF generation failed:', err);
+    console.error('[submit:q1] PDF generation failed:', err);
     return NextResponse.json({ error: 'יצירת ה-PDF נכשלה' }, { status: 500 });
   }
 
-  // ─── העלאה ל-Storage ────────────────────────────────────────────────────
   let reportUrl: string;
   try {
     reportUrl = await uploadReportPdf({
       pdf: pdfBuffer,
-      reportId: scoring.reportId,
+      reportId: `q1-${scoring.reportId}`,
       email: body.email,
     });
   } catch (err) {
-    console.error('[submit] PDF upload failed:', err);
+    console.error('[submit:q1] PDF upload failed:', err);
     return NextResponse.json({ error: 'העלאת הדוח נכשלה' }, { status: 500 });
   }
 
-  // ─── סנכרון Smoove ────────────────────────────────────────────────────
   try {
     await syncContactToSmoove({
+      questionnaireId: 'q1',
       email: body.email,
       fullName: body.fullName.trim(),
       phone: body.phone,
@@ -113,13 +136,82 @@ export async function POST(request: Request): Promise<NextResponse<SubmitResult 
       marketingConsent: body.marketingConsent ?? true,
     });
   } catch (err) {
-    // Smoove נכשל — לוגים אבל לא חוסם את התגובה ללקוח
-    console.error('[submit] Smoove sync failed:', err);
+    console.error('[submit:q1] Smoove sync failed:', err);
   }
 
   return NextResponse.json({
     ok: true,
     reportId: scoring.reportId,
+    reportUrl,
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V2 (q2) — flow חדש
+// ────────────────────────────────────────────────────────────────────────────
+
+async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { error: string }>> {
+  const answers: Q2Answers = new Map();
+  for (const [k, v] of Object.entries(body.answers)) {
+    answers.set(k, v);
+  }
+
+  let scoring;
+  try {
+    scoring = scoreQ2Submission(answers);
+  } catch (err) {
+    return NextResponse.json(
+      { error: `שגיאת ניקוד: ${err instanceof Error ? err.message : 'unknown'}` },
+      { status: 400 },
+    );
+  }
+
+  const rendered = renderQ2Report({
+    reportId: scoring.selectedReport,
+    fullName: body.fullName.trim(),
+  });
+
+  let pdfBuffer: Buffer;
+  try {
+    const html = buildQ2PdfHtml(rendered);
+    pdfBuffer = await generatePdf(html);
+  } catch (err) {
+    console.error('[submit:q2] PDF generation failed:', err);
+    return NextResponse.json({ error: 'יצירת ה-PDF נכשלה' }, { status: 500 });
+  }
+
+  let reportUrl: string;
+  try {
+    reportUrl = await uploadReportPdf({
+      pdf: pdfBuffer,
+      reportId: `q2-${scoring.selectedReport}`,
+      email: body.email,
+    });
+  } catch (err) {
+    console.error('[submit:q2] PDF upload failed:', err);
+    return NextResponse.json({ error: 'העלאת הדוח נכשלה' }, { status: 500 });
+  }
+
+  try {
+    await syncContactToSmoove({
+      questionnaireId: 'q2',
+      email: body.email,
+      fullName: body.fullName.trim(),
+      phone: body.phone,
+      capitalRange: scoring.capitalRange,
+      reportUrl,
+      // ב-V2 אין צ'קבוקס "רוצה פגישה" — לא מוסיפים אוטומטית לרשימת הפגישות.
+      // הליד עדיין מסונכרן ל-Smoove עם i20=q2 + i19=reportUrl + i1=capital_range.
+      wantsMeeting: false,
+      marketingConsent: true,
+    });
+  } catch (err) {
+    console.error('[submit:q2] Smoove sync failed:', err);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    reportId: scoring.selectedReport,
     reportUrl,
   });
 }
