@@ -157,10 +157,9 @@
   z-index: 5;
   pointer-events: none;
   will-change: top, transform;
-  /* גם top וגם transform — שניהם linear באותו משך זמן. top משמש למעבר
-     בין בועות (continuation), transform לאנימציית ה"ירידה" בתוך כל בועה.
-     ההפעלה של ה-transition מתבצעת ע"י עדכון 2-step ב-React (initial → resting). */
-  transition: top var(--anim-long) linear, transform var(--anim-long) linear, opacity 200ms linear;
+  /* רק top — לcontinuation. Transform ו-opacity מנוהלים ב-WAAPI עבור fresh
+     bursts (ראה avatarRefCallback ב-component). */
+  transition: top var(--anim-long) linear;
 }
 
 @media (min-width: 720px) {
