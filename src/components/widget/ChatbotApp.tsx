@@ -309,13 +309,14 @@ export function ChatbotApp() {
     if (!aud) return;
     const ans = answersRef.current;
 
-    const linearOrder = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10', 'Q11'];
+    // Q11 ("מה הפחד?") הוסר — מ-Q10 קופצים ישירות ל-Q12.
+    const linearOrder = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'];
     const idx = linearOrder.indexOf(currentQid);
     if (idx >= 0 && idx < linearOrder.length - 1) {
       askQuestion(linearOrder[idx + 1], aud);
       return;
     }
-    if (currentQid === 'Q11') {
+    if (currentQid === 'Q10') {
       askQuestion('Q12', aud);
       return;
     }

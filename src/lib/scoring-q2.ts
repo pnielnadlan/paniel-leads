@@ -85,14 +85,11 @@ export function scoreQ2Submission(answers: Q2Answers): Q2ScoringResult {
   // הכרעת מנצח טבעי לפי ניקוד + תיקו
   let winner = pickWinnerByScore(scores);
 
-  // דריסה 2: אין תזרים חיובי (Q5=A) + פחד משמעותי → R6, אלא אם R5 גבוה יותר
+  // דריסה 2: אין תזרים חיובי (Q5=A) + פחד משמעותי → R6, אלא אם R5 גבוה יותר.
+  // Q11 הוסר; הפחד מזוהה רק לפי Q10=A ("פחד לעשות טעות יקרה").
   if (answers.get('Q5') === 'A') {
-    const hasFear =
-      answers.get('Q10') === 'A' ||
-      answers.get('Q11') === 'A' ||
-      answers.get('Q11') === 'B';
+    const hasFear = answers.get('Q10') === 'A';
     if (hasFear && scores.R5 < scores.R6 + 1) {
-      // R5 לא גובר משמעותית → העדף R6
       winner = 'R6';
     }
   }
