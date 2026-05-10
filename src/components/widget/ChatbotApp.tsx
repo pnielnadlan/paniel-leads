@@ -75,6 +75,7 @@ type Item =
   | { kind: 'error'; text: string; key: string };
 
 const LONG_THRESHOLD = 140;
+const AVATAR_SIZE = 38; // חייב להיות תואם ל-CSS var --avatar-size
 
 function isBotSide(kind: Item['kind']): boolean {
   return (
@@ -98,14 +99,16 @@ export function ChatbotApp() {
   const submittedRef = useRef(false);
 
   // ─── אווטאר floating ─────────────────────────────────────────────────────
-  // אחד בלבד, position absolute. נצמד לראש הודעת הבוט האחרונה.
-  // ה-transition על top *תמיד* פעיל בבסיס ה-CSS — כך שכל עדכון של ה-top
-  // מתחיל מיד ב-CSS transition (במקביל לאנימציית ציור הבועה החדשה). ה-key
-  // (avatarBurstId) משתנה רק כשמדובר בבורסט חדש (אחרי הודעת משתמש), וגורם
-  // ל-React לעשות remount → מאפסת את ה-CSS transition כך שהאווטאר מופיע
-  // מיד במקום החדש בלי לזוז ממיקום קודם.
+  // אחד בלבד, position absolute. ממוקם בקו ה-bottom של הודעת הבוט האחרונה.
+  // - בכל הוספת bubble (continuation): top מתעדכן → CSS transition מחליק
+  //   חלק לקו ה-bottom של הבועה החדשה (במקביל ל-clip-path של הריבוע).
+  // - מונט ראשון של בורסט (אחרי הודעת משתמש): key חדש → animation עם
+  //   translateY שיורדת מ-top של הבועה ל-bottom שלה, מסונכרנת בדיוק עם
+  //   הציור של הריבוע (אותו משך, אותו timing function).
   const [avatarTop, setAvatarTop] = useState<number | null>(null);
+  const [avatarDescent, setAvatarDescent] = useState(0);
   const [avatarBurstId, setAvatarBurstId] = useState(0);
+  const [avatarFresh, setAvatarFresh] = useState(false);
 
   // ─── גלילה ─────────────────────────────────────────────────────────────
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -165,19 +168,26 @@ export function ChatbotApp() {
       setAvatarTop(null);
       return;
     }
-    // ה-children של הטרנסקריפט: items + sentinel בסוף
     const child = t.children[lastBotIdx] as HTMLElement | undefined;
     if (!child) return;
-    const newTop = child.offsetTop;
-    // continuation = items[lastBotIdx-1] גם הוא bot-side
+
+    // מיקום resting: מרכז האווטאר על קו ה-bottom של הבועה.
+    // עבור bubble קצרה (גובה < 80) — נשארים בראש כדי לא להיראות מוזרים.
+    const bubbleBottom = child.offsetTop + child.offsetHeight;
+    const restingTop = bubbleBottom - AVATAR_SIZE / 2;
+    // descent — כמה האווטאר ירד ב-animation מהמיקום ההתחלתי שלו (TOP של הבועה)
+    // ל-resting שלו (bottom). שווה לגובה הבועה.
+    const descent = child.offsetHeight;
+
     const isContinuation = lastBotIdx > 0 && isBotSide(items[lastBotIdx - 1].kind);
+    setAvatarTop(restingTop);
+    setAvatarDescent(descent);
     if (isContinuation) {
-      // continuation: רק לעדכן top — ה-CSS transition יקפוץ אוטומטית
-      setAvatarTop(newTop);
+      setAvatarFresh(false); // CSS transition יחליק לבד
     } else {
-      // בורסט חדש — bump key ל-remount + מיקום מיידי
-      setAvatarTop(newTop);
+      // בורסט חדש — bump key, אנימציית descent רצה
       setAvatarBurstId((k) => k + 1);
+      setAvatarFresh(true);
     }
   }, [items]);
 
@@ -578,8 +588,13 @@ export function ChatbotApp() {
         {avatarTop !== null && (
           <div
             key={`avatar-${avatarBurstId}`}
-            className="floating-avatar"
-            style={{ top: `${avatarTop}px` }}
+            className={`floating-avatar ${avatarFresh ? 'fresh' : ''}`}
+            style={
+              {
+                top: `${avatarTop}px`,
+                '--avatar-descent': `${avatarDescent}px`,
+              } as React.CSSProperties
+            }
             aria-hidden="true"
           >
             <span className="bot-avatar-letter">פ</span>

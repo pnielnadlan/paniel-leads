@@ -157,13 +157,9 @@
   z-index: 5;
   pointer-events: none;
   will-change: top, transform;
-  /* תמיד פעיל — כל שינוי של top יגרור CSS transition אוטומטית, במקביל
-     לאנימציית ציור הריבוע של הבועה החדשה. */
+  /* תמיד פעיל — כל שינוי של top יגרור transition מיידי, במקביל לציור
+     הריבוע של הבועה הבאה (continuation). */
   transition: top var(--anim-long) linear;
-  /* אנימציית הופעה — רצה רק במונט הראשון של אלמנט (כל פעם שה-key משתנה).
-     משלבת fade-in + scale + ירידה קלה כדי להיות מסונכרנת עם ציור הבועה
-     הראשונה בבורסט. */
-  animation: floating-avatar-appear var(--anim-long) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (min-width: 720px) {
@@ -172,9 +168,27 @@
   }
 }
 
-@keyframes floating-avatar-appear {
-  from { opacity: 0; transform: translateY(-32px) scale(0.65); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+/* בורסט חדש (מונט עם key חדש): אנימציית "ירידה" — האווטאר מתחיל ב-top
+   של הבועה החדשה (translateY שלילי = למעלה) ויורד למיקום ה-resting שלו
+   ב-bottom של הבועה. נע במקביל ל-clip-path של הריבוע — שניהם linear,
+   אותו משך. ה-CSS variable --avatar-descent נקבע מה-component לפי גובה
+   הבועה. */
+.floating-avatar.fresh {
+  animation: floating-avatar-descend var(--anim-long) linear both;
+}
+
+@keyframes floating-avatar-descend {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--avatar-descent, 0px) * -1));
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .bot-avatar-letter {
@@ -222,14 +236,15 @@
   color: var(--text-dark);
 }
 
-/* ─── אנימציה ארוכה: ציור מרובע מהפינה הימנית-העליונה לשמאלית-תחתונה ─── */
+/* ─── אנימציה ארוכה: גדילה מאונכית — top edge קבוע, bottom edge יורד.
+   המודל הזה תואם את "סמן עכבר" שמושך את הריבוע כלפי מטה. */
 .bubble-bot-wrap.bubble-long .bubble-bot-frame {
-  animation: draw-rect var(--anim-long) cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: draw-rect var(--anim-long) linear both;
 }
 
 @keyframes draw-rect {
-  from { clip-path: inset(0 0 100% 100%); }   /* רק הפינה הימנית-העליונה */
-  to   { clip-path: inset(0 0 0% 0%); }       /* כל המרובע */
+  from { clip-path: inset(0 0 100% 0); }   /* רק קו עליון דק (height = 0) */
+  to   { clip-path: inset(0 0 0% 0); }     /* גובה מלא */
 }
 
 /* התוכן מופיע ב-fade-in מהיר לקראת סוף ציור המסגרת */
@@ -262,7 +277,7 @@
 
 .bubble-bot-wrap.bubble-hero .bubble-bot-frame {
   border-color: var(--bot-border);
-  animation: draw-rect var(--anim-long) cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: draw-rect var(--anim-long) linear both;
 }
 
 .bubble-bot-wrap.bubble-hero .bubble-bot-content {
@@ -492,7 +507,7 @@
   border-radius: var(--bubble-radius);
   z-index: 0;
   pointer-events: none;
-  animation: draw-rect var(--anim-long) cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: draw-rect var(--anim-long) linear both;
 }
 
 .bubble-result-content {
