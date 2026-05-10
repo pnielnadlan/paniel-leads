@@ -26,6 +26,7 @@ import {
   REPORT_ONLY_CLOSING,
   ANALYZING_TEXT,
   TESTIMONIAL_IMAGES,
+  TESTIMONIALS_INTRO,
   pickVariant,
   type AudienceVariant,
   type OptionId,
@@ -101,19 +102,25 @@ export function ChatbotApp() {
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const lastUserScrollAtRef = useRef(0);
 
-  const scrollToBottom = (smooth = true) => {
-    bottomSentinelRef.current?.scrollIntoView({
-      block: 'end',
-      behavior: smooth ? 'smooth' : 'auto',
-    });
+  const scrollToBottom = (smooth = false) => {
+    const el = transcriptRef.current;
+    if (!el) return;
+    if (smooth) {
+      bottomSentinelRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight + 9999;
+    }
   };
 
   useEffect(() => {
     // אם המשתמש גלל ידנית ב-2.5 שניות האחרונות — לא נילחם בו.
     const sinceUser = Date.now() - lastUserScrollAtRef.current;
     if (sinceUser < 2500) return;
-    // ניסיונות מרובים כדי לתפוס תמונות שעולות / אנימציות שמשנות גובה
-    const ts = [50, 350, 900, 1500].map((d) => setTimeout(() => scrollToBottom(true), d));
+    // גלילה מיידית פעמיים, ואז עוד פעמיים בעיכוב לתפוס תמונות שעולות מאוחר
+    requestAnimationFrame(() => scrollToBottom(false));
+    const ts = [80, 350, 900, 1600, 2400].map((d) =>
+      setTimeout(() => scrollToBottom(false), d),
+    );
     return () => ts.forEach(clearTimeout);
   }, [items]);
 
@@ -349,21 +356,32 @@ export function ChatbotApp() {
             ? pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud)
             : pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud);
         resolveItem(key, text);
-        // ─── סדר איסוף: שם → מייל → טלפון ───
-        appendBot(pickVariant(NAME_PROMPT, aud));
-        appendInput('text', 'שם מלא', isNameValid, (name) => {
-          fullNameRef.current = name.trim();
-          appendBot(pickVariant(EMAIL_PROMPT, aud));
-          appendInput('email', 'name@example.com', isEmailValid, (em) => {
-            emailRef.current = em;
-            appendBot(pickVariant(PHONE_PROMPT, aud));
-            appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
-              phoneRef.current = ph;
-              void showSimulatorAndContinue();
-            });
-          });
-        });
+        if (id === 'with-meeting') {
+          // מסלול "פגישה" — איסוף פרטים מלא לפני הסימולטור
+          collectDetailsThenContinue();
+        } else {
+          // מסלול "רק דוח" — דילוג על הטופס; ישר לסימולטור + תמונות + הצעה-מחדש
+          void showSimulatorAndContinue();
+        }
       },
+    });
+  };
+
+  const collectDetailsThenContinue = () => {
+    const aud = audienceRef.current;
+    if (!aud) return;
+    appendBot(pickVariant(NAME_PROMPT, aud));
+    appendInput('text', 'שם מלא', isNameValid, (name) => {
+      fullNameRef.current = name.trim();
+      appendBot(pickVariant(EMAIL_PROMPT, aud));
+      appendInput('email', 'name@example.com', isEmailValid, (em) => {
+        emailRef.current = em;
+        appendBot(pickVariant(PHONE_PROMPT, aud));
+        appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
+          phoneRef.current = ph;
+          void showSimulatorAndContinue();
+        });
+      });
     });
   };
 
@@ -413,22 +431,24 @@ export function ChatbotApp() {
       text: reportContent.simulatorOutput,
     });
 
-    // Stage C: תמונות עדויות (אחרי 1 שנייה כדי לתת לתוצאה להיכנס)
+    // Stage C: הודעת מבוא לתמונות + תמונות עדויות
     await delay(1100);
     if (TESTIMONIAL_IMAGES.length > 0) {
+      appendBot(pickVariant(TESTIMONIALS_INTRO, aud));
+      await delay(900);
       append({ kind: 'testimonials', key: `tst-${Date.now()}`, images: TESTIMONIAL_IMAGES });
     }
 
     // Stage D: ענף לפי הבחירה הראשונית
-    await delay(900);
+    await delay(1100);
     if (initialChoiceRef.current === 'with-meeting') {
-      // מסלול "פגישה": NEXT_STEP_PROMPT + MEETING_CLOSING + שליחה לשרת
+      // מסלול "פגישה": NEXT_STEP_PROMPT + MEETING_CLOSING + שליחה לשרת (פרטים כבר נאספו)
       appendBot(pickVariant(NEXT_STEP_PROMPT, aud));
       await delay(700);
       appendBot(pickVariant(MEETING_CLOSING, aud));
       void submitToServer(true);
     } else {
-      // מסלול "רק דוח": REENGAGEMENT_PROMPT + 2 אופציות
+      // מסלול "רק דוח": REENGAGEMENT_PROMPT + 2 אופציות (פרטים לא נאספו עדיין)
       appendBot(pickVariant(REENGAGEMENT_PROMPT, aud));
       await delay(400);
       appendReengagementOptions();
@@ -453,11 +473,26 @@ export function ChatbotApp() {
           : pickVariant(REENGAGEMENT_OPTIONS.reportOnly, aud);
         resolveItem(key, text);
         if (isMeeting) {
-          appendBot(pickVariant(MEETING_CLOSING, aud));
+          // המשתמש שינה את דעתו — נדרש לאסוף פרטים עכשיו לפני שליחת PDF + Smoove
+          appendBot(pickVariant(NAME_PROMPT, aud));
+          appendInput('text', 'שם מלא', isNameValid, (name) => {
+            fullNameRef.current = name.trim();
+            appendBot(pickVariant(EMAIL_PROMPT, aud));
+            appendInput('email', 'name@example.com', isEmailValid, (em) => {
+              emailRef.current = em;
+              appendBot(pickVariant(PHONE_PROMPT, aud));
+              appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
+                phoneRef.current = ph;
+                appendBot(pickVariant(MEETING_CLOSING, aud));
+                void submitToServer(true);
+              });
+            });
+          });
         } else {
+          // נשאר במסלול "רק דוח" — סיום עם הפניה לאתר, ללא submit לשרת
+          // (אין PDF / Smoove כי המשתמש לא אישר ולא נתן פרטים).
           appendBot(pickVariant(REPORT_ONLY_CLOSING, aud));
         }
-        void submitToServer(isMeeting);
       },
     });
   };

@@ -16,13 +16,13 @@
   --bubble-radius: 16px;
   --avatar-size: 38px;
   --row-gap: 10px;
-  /* משכי אנימציה — איטיים יותר לפי בקשת המשתמש */
-  --anim-long: 1000ms;          /* ציור מרובע ארוך */
+  /* משכי אנימציה — אווטאר וציור הריבוע מסונכרנים בדיוק */
+  --anim-long: 850ms;            /* ציור מרובע ארוך (מהיר ב-150ms מקודם) */
   --anim-short: 760ms;           /* פוף קצר */
   --anim-option: 780ms;          /* סליידר אופציות מהצד */
-  --anim-avatar: 880ms;          /* ירידת אווטאר */
-  --anim-content-fade: 280ms;    /* fade in של התוכן */
-  --anim-content-delay-long: 720ms;
+  --anim-avatar: 850ms;          /* ירידת אווטאר — סנכרון מדויק עם anim-long */
+  --anim-content-fade: 240ms;    /* fade in של התוכן */
+  --anim-content-delay-long: 600ms;
 }
 
 /* ─── ביטול הסטיילים של V1 (widget-shell) ─── */
@@ -153,7 +153,9 @@
   justify-content: center;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  animation: avatar-drop var(--anim-avatar) cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* האווטאר יורד מלמעלה לאורך הקו הימני של הריבוע, מסונכרן בדיוק עם
+     אנימציית הציור של הריבוע. */
+  animation: avatar-drag-down var(--anim-avatar) linear both;
 }
 
 .bot-avatar-letter {
@@ -169,9 +171,14 @@
   line-height: 1;
 }
 
-@keyframes avatar-drop {
-  from { opacity: 0; transform: translateY(-30px) scale(0.85); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+/* תנועת "סמן עכבר": האווטאר מתחיל גבוה (מעל הריבוע) ויורד באופן ליניארי
+   לתחתית הריבוע, ואז קופץ בחזרה למקום המנוחה (top-right). הסנכרון עם
+   ה-clip-path של הריבוע יוצר רושם שהאווטאר "מצייר" את הריבוע בגרירה. */
+@keyframes avatar-drag-down {
+  0%   { opacity: 0; transform: translateY(-44px); }
+  10%  { opacity: 1; transform: translateY(-36px); }
+  98%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* ─── מבנה בועת בוט: wrap + frame + content ─── */
