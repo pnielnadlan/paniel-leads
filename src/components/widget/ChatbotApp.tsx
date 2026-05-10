@@ -85,16 +85,43 @@ export function ChatbotApp() {
   const phoneRef = useRef('');
   const wantsMeetingRef = useRef<boolean>(false);
 
-  // גלילה תמיד למטה — גם בטעינה ראשונה
+  // גלילה תמיד למטה — כולל ברנדר הראשון. עוקבים אחרי שינויי גודל (תמונות
+  // נטענות אסינכרונית, גובה bubble משתנה אחרי אנימציות) ב-ResizeObserver
+  // כדי לא לפספס את הגלילה.
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    const el = transcriptRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
+
+  useEffect(() => {
+    requestAnimationFrame(scrollToBottom);
+    // גלילה נוספת אחרי שתמונות יטענו / animation יסתיים
+    const t = setTimeout(scrollToBottom, 250);
+    return () => clearTimeout(t);
+  }, [items]);
+
+  // ResizeObserver עוקב אחרי תוכן השיחה — אם הגובה משתנה (תמונה נטענה,
+  // bubble מתרחב), נגלול שוב. גם נוקרא בטעינה ראשונה.
   useEffect(() => {
     const el = transcriptRef.current;
     if (!el) return;
-    // גלילה ל-bottom; instant ברנדר הראשון (אין אנימציית גלילה מטרידה),
-    // smooth אחרי כן
-    requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
+    const ro = new ResizeObserver(() => {
+      // אם המשתמש כבר גלל למעלה ידנית, לא דוחפים אותו חזרה למטה.
+      // נחשב: אם הוא בתוך 80px מהתחתית — נחזיר אותו לתחתית.
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distanceFromBottom < 80) {
+        el.scrollTop = el.scrollHeight;
+      }
     });
+    // צופים בכל פריט בתוך הטרנסקריפט
+    Array.from(el.children).forEach((child) => ro.observe(child));
+    // וגם בטרנסקריפט עצמו (לשינויי גודל container)
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [items]);
 
   // ─── append helpers ────────────────────────────────────────────────────
@@ -421,7 +448,14 @@ function renderItem(it: Item, showAvatar: boolean) {
           <div className="bubble-bot-wrap bubble-hero">
             <div className="bubble-bot-frame" />
             <div className="bubble-bot-content">
-              <img src="/q2/hero.jpg" alt="צוות פניאל נדל״ן" />
+              {/* width/height מוגדרים מראש כדי שתפיסת המקום ב-DOM לא תקרה
+                  אחרי שהתמונה נטענת (הייתה משבשת את scrollTop). */}
+              <img
+                src="/q2/hero.jpg"
+                alt="צוות פניאל נדל״ן"
+                width={1500}
+                height={1000}
+              />
             </div>
           </div>
         </div>
