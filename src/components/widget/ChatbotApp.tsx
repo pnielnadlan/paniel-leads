@@ -110,7 +110,8 @@ export function ChatbotApp() {
   //   שהאנימציה מוצמדת לעוד לפני ה-paint הראשון, בלי תלות ב-rAF/state-loop.
   const [avatarTop, setAvatarTop] = useState<number | null>(null);
   const [avatarBurstId, setAvatarBurstId] = useState(0);
-  const pendingDescentRef = useRef<number | null>(null);
+  const [avatarTransitionMs, setAvatarTransitionMs] = useState(850);
+  const pendingDescentRef = useRef<{ height: number; durationMs: number } | null>(null);
 
   // ─── גלילה ─────────────────────────────────────────────────────────────
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -177,30 +178,46 @@ export function ChatbotApp() {
     const restingTop = bubbleBottom - AVATAR_SIZE / 2;
     const isContinuation = lastBotIdx > 0 && isBotSide(items[lastBotIdx - 1].kind);
 
+    // ─── זמן אנימציה לפי סוג הבועה ──────────────────────────────────────
+    // - בועות נמוכות (≤100px) — סטטי לחלוטין, האווטאר קופץ למקום בלי תנועה.
+    // - testimonials — אנימציה ארוכה יותר (התמונות נכנסות עם stagger ארוך).
+    // - שאר הבועות הארוכות — 850ms (תואם את ציור הריבוע).
+    const lastItem = items[lastBotIdx];
+    let durationMs: number;
+    if (bubbleHeight <= 100) {
+      durationMs = 0;
+    } else if (lastItem.kind === 'testimonials') {
+      durationMs = 1800;
+    } else {
+      durationMs = 850;
+    }
+
+    setAvatarTransitionMs(durationMs);
     setAvatarTop(restingTop);
 
-    if (!isContinuation) {
-      // בורסט חדש — שמור descent + bump key. ה-ref callback יפעיל את WAAPI
-      // ברגע שה-element מאתחל ב-DOM (לפני ה-paint הראשון).
-      pendingDescentRef.current = bubbleHeight;
+    if (!isContinuation && bubbleHeight > 100) {
+      // בורסט חדש על בועה גבוהה — descent דרך WAAPI.
+      pendingDescentRef.current = { height: bubbleHeight, durationMs };
+      setAvatarBurstId((k) => k + 1);
+    } else if (!isContinuation) {
+      // בורסט חדש על בועה קצרה — רק bump key (כדי שלא יזחול), בלי descent.
       setAvatarBurstId((k) => k + 1);
     }
   }, [items]);
 
-  // ref callback — נקרא בכל mount/remount של האווטאר.
-  // ברגע שה-element קיים, אם יש pendingDescent, מפעילים WAAPI animation.
+  // ref callback — מפעיל WAAPI descent ברגע שה-element מאתחל ב-DOM.
   const avatarRefCallback = (el: HTMLDivElement | null) => {
     if (!el) return;
-    const descent = pendingDescentRef.current;
-    if (descent === null || descent <= 0) return;
+    const pending = pendingDescentRef.current;
+    if (pending === null || pending.height <= 0) return;
     pendingDescentRef.current = null;
     el.animate(
       [
-        { transform: `translateY(${-descent}px)`, opacity: 0, offset: 0 },
-        { transform: `translateY(${-descent * 0.85}px)`, opacity: 1, offset: 0.18 },
+        { transform: `translateY(${-pending.height}px)`, opacity: 0, offset: 0 },
+        { transform: `translateY(${-pending.height * 0.85}px)`, opacity: 1, offset: 0.18 },
         { transform: 'translateY(0)', opacity: 1, offset: 1 },
       ],
-      { duration: 850, easing: 'linear', fill: 'both' },
+      { duration: pending.durationMs, easing: 'linear', fill: 'both' },
     );
   };
 
@@ -615,7 +632,10 @@ export function ChatbotApp() {
             key={`avatar-${avatarBurstId}`}
             ref={avatarRefCallback}
             className="floating-avatar"
-            style={{ top: `${avatarTop}px` }}
+            style={{
+              top: `${avatarTop}px`,
+              transition: `top ${avatarTransitionMs}ms linear`,
+            }}
             aria-hidden="true"
           >
             <span className="bot-avatar-letter">פ</span>

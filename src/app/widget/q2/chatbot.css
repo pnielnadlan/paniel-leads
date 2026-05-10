@@ -114,9 +114,8 @@
   z-index: 5;
   pointer-events: none;
   will-change: top, transform;
-  /* רק top — לcontinuation. Transform ו-opacity מנוהלים ב-WAAPI עבור fresh
-     bursts (ראה avatarRefCallback ב-component). */
-  transition: top var(--anim-long) linear;
+  /* transition על top נקבע inline ע"י ה-component — באורך שונה לפי סוג
+     הבועה (0ms לבועה קצרה, 850ms לטקסט, 1800ms ל-testimonials). */
 }
 
 @media (min-width: 720px) {
