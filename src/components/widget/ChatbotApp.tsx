@@ -37,6 +37,10 @@ import {
 import { Q2_REPORTS } from '@/data/reports-q2';
 import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
 
+// עמוד תודה לאחר השארת פרטים + קביעת פגישה — לצורך מעקב פיקסלי הקמפיין.
+// רידיירקט מתבצע ל-window.top (ייצא מהאייפריים אם הוא בתוך אתר אחר).
+const MEETING_THANKYOU_URL = 'https://pnielnadlan.co.il/t/';
+
 type BotLength = 'long' | 'short';
 
 type Item =
@@ -560,8 +564,9 @@ export function ChatbotApp() {
     });
   };
 
-  /** שליחה לשרת ברקע — מייצרת PDF, מעלה ל-Supabase, מסנכרנת ל-Smoove.
-   *  אי-הצלחה לא משבשת את חוויית המשתמש (כבר קיבל את התוצאה ב-UI).
+  /** שליחה לשרת — מייצרת PDF, מעלה ל-Supabase, מסנכרנת ל-Smoove.
+   *  אם wantsMeeting=true: לאחר שליחה מוצלחת מבוצע רידיירקט לעמוד התודה
+   *  של פניאל (לצורך מעקב פיקסלי הקמפיין). אי-הצלחה לא חוסמת את הרידיירקט.
    */
   const submitToServer = async (wantsMeeting: boolean) => {
     if (submittedRef.current) return;
@@ -585,13 +590,23 @@ export function ChatbotApp() {
     } catch (err) {
       console.error('[chatbot] background submit failed:', err);
     }
+    if (wantsMeeting) {
+      // רידיירקט לעמוד התודה של פניאל. ניסיון להפנות את ה-window.top (אם
+      // האפליקציה ב-iframe). אם cross-origin חוסם — fallback ל-self.
+      try {
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = MEETING_THANKYOU_URL;
+        } else {
+          window.location.href = MEETING_THANKYOU_URL;
+        }
+      } catch {
+        window.location.href = MEETING_THANKYOU_URL;
+      }
+    }
   };
 
   return (
     <div className="chatbot-root">
-      <div className="chat-brandbar">
-        <span className="chat-brandbar-name">פניאל נדל״ן · סימולטור משקיע</span>
-      </div>
       <div className="chat-transcript" ref={transcriptRef}>
         {items.map((it) => renderItem(it))}
         {avatarTop !== null && (

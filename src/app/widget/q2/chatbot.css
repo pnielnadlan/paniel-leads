@@ -34,7 +34,7 @@
   display: none !important;
 }
 
-/* ─── רקע חיצוני כהה ─── */
+/* ─── shell שקוף — להטמעה ב-iframe באתר הלקוח, ללא מסגרת חיצונית ─── */
 .chatbot-shell {
   min-height: 100dvh;
   width: 100%;
@@ -46,24 +46,11 @@
   box-sizing: border-box;
   color: var(--text-dark);
   direction: rtl;
-  background:
-    radial-gradient(ellipse 80% 60% at 30% 10%, rgba(0, 204, 204, 0.16), transparent 60%),
-    radial-gradient(ellipse 70% 60% at 80% 90%, rgba(0, 153, 255, 0.16), transparent 55%),
-    linear-gradient(135deg, #051a2e 0%, #0a2540 50%, #051527 100%);
+  background: transparent;
   position: relative;
 }
 
-.chatbot-shell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0);
-  background-size: 32px 32px;
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-/* ─── הקופסה הלבנה ─── */
+/* ─── חלונית הצ'אט — לבנה, נטו ─── */
 .chatbot-root {
   width: 100%;
   max-width: 760px;
@@ -72,38 +59,8 @@
   background: #ffffff;
   position: relative;
   z-index: 1;
-}
-
-@media (min-width: 720px) {
-  .chatbot-shell { padding: 24px; }
-  .chatbot-root {
-    border-radius: 18px;
-    height: calc(100dvh - 48px);
-    max-height: calc(100dvh - 48px);
-    box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.45);
-  }
-}
-
-@media (max-width: 720px) {
-  .chatbot-root { height: 100dvh; max-height: 100dvh; }
-}
-
-/* ─── סרגל מותג עליון ─── */
-.chat-brandbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--bot-border);
-  background: #ffffff;
-  flex-shrink: 0;
-}
-
-.chat-brandbar-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--brand);
-  letter-spacing: 0.04em;
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 /* ─── רצועת השיחה ─── */
