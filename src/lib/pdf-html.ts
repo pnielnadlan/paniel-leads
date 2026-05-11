@@ -170,28 +170,51 @@ export function buildPdfHtml(report: RenderOutput): string {
     }
 
     .meeting-cta {
-      margin-top: 10mm;
-      padding: 6mm 6mm;
+      margin-top: 12mm;
+      padding: 10mm 8mm 11mm;
       background: ${COLORS.paleBackground};
-      border-radius: 4mm;
-      border: 1.5px solid ${COLORS.dodgerBlue};
+      border-radius: 5mm;
+      border: 2px solid ${COLORS.dodgerBlue};
       page-break-inside: avoid;
+      text-align: center;
     }
 
     .meeting-cta .cta-label {
-      font-weight: 700;
-      font-size: 11pt;
+      font-weight: 800;
+      font-size: 16pt;
       color: ${COLORS.dodgerBlue};
-      margin-bottom: 2mm;
-      text-transform: none;
+      margin: 0 0 5mm 0;
       letter-spacing: 0.02em;
     }
 
     .meeting-cta .cta-text {
-      font-size: 12pt;
-      line-height: 1.6;
+      font-size: 13pt;
+      line-height: 1.65;
       color: ${COLORS.prussianBlue};
-      margin: 0;
+      font-weight: 500;
+      margin: 0 auto 8mm;
+      max-width: 145mm;
+      text-align: center;
+    }
+
+    /* כפתור CTA קליקבילי — אנקור עם href ל-pniel.co.il/consulting/ */
+    .meeting-cta .cta-button {
+      display: inline-block;
+      padding: 5mm 12mm;
+      background: ${COLORS.dodgerBlue};
+      color: #ffffff !important;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 15pt;
+      border-radius: 3mm;
+      letter-spacing: 0.01em;
+      box-shadow: 0 2mm 4mm rgba(0, 153, 255, 0.25);
+    }
+
+    .meeting-cta .cta-button:visited,
+    .meeting-cta .cta-button:link {
+      color: #ffffff !important;
+      text-decoration: none;
     }
 
     /* עיצוב חלקי הטקסט הראשון (לפני הכותרת הראשונה) — פסקאות פתיחה */
@@ -239,6 +262,7 @@ export function buildPdfHtml(report: RenderOutput): string {
   <div class="meeting-cta">
     <div class="cta-label">השלב הבא: פגישת אפיון אישית</div>
     <p class="cta-text">${escapeHtml(report.meetingSentence)}</p>
+    <a class="cta-button" href="https://pniel.co.il/consulting/">קבעו פגישת אפיון ללא עלות &raquo;&raquo;</a>
   </div>
 </body>
 </html>`;

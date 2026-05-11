@@ -581,8 +581,8 @@ export function ChatbotApp() {
   };
 
   /** שליחה לשרת — מייצרת PDF, מעלה ל-Supabase, מסנכרנת ל-Smoove.
-   *  אם wantsMeeting=true: לאחר שליחה מוצלחת מבוצע רידיירקט לעמוד התודה
-   *  של פניאל (לצורך מעקב פיקסלי הקמפיין). אי-הצלחה לא חוסמת את הרידיירקט.
+   *  הרידיירקט עצמו לא קורה כאן (כדי שהמשתמש יספיק לקרוא את הודעות הסיום).
+   *  אחרי הסיום נקרא ל-finalizeAfterMeetingSubmit אם wantsMeeting=true.
    */
   const submitToServer = async (wantsMeeting: boolean) => {
     if (submittedRef.current) return;
@@ -607,17 +607,40 @@ export function ChatbotApp() {
       console.error('[chatbot] background submit failed:', err);
     }
     if (wantsMeeting) {
-      // רידיירקט לעמוד התודה של פניאל. ניסיון להפנות את ה-window.top (אם
-      // האפליקציה ב-iframe). אם cross-origin חוסם — fallback ל-self.
-      try {
-        if (window.top && window.top !== window.self) {
-          window.top.location.href = MEETING_THANKYOU_URL;
-        } else {
-          window.location.href = MEETING_THANKYOU_URL;
-        }
-      } catch {
+      finalizeAfterMeetingSubmit();
+    }
+  };
+
+  // המשתמש בחר פגישה ושלחנו את הליד. כדי לא לחתוך לו את הקריאה של הודעת
+  // הסיום, מוסיפים בועת "המשך »" — לחיצה עליה תעביר מיד לעמוד התודה
+  // (לצורך מעקב פיקסל הקמפיין). גם אם המשתמש לא לוחץ, רידיירקט-fallback
+  // מתבצע אוטומטית אחרי 12 שניות כדי להבטיח שהפיקסל יורה.
+  const redirectScheduledRef = useRef(false);
+  const finalizeAfterMeetingSubmit = () => {
+    if (redirectScheduledRef.current) return;
+    redirectScheduledRef.current = true;
+    const key = `continue-${Date.now()}`;
+    append({
+      kind: 'options',
+      key,
+      options: [{ id: 'continue', text: 'המשך »' }],
+      onPick: () => redirectToThanks(),
+    });
+    setTimeout(redirectToThanks, 12000);
+  };
+
+  const redirectedRef = useRef(false);
+  const redirectToThanks = () => {
+    if (redirectedRef.current) return;
+    redirectedRef.current = true;
+    try {
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = MEETING_THANKYOU_URL;
+      } else {
         window.location.href = MEETING_THANKYOU_URL;
       }
+    } catch {
+      window.location.href = MEETING_THANKYOU_URL;
     }
   };
 
