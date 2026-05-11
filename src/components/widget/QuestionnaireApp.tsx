@@ -21,6 +21,7 @@ import {
 } from '@/data/questions';
 import { scoreSubmission, type Answers } from '@/lib/scoring';
 import { TEASERS_BY_REPORT } from '@/data/teasers';
+import { trackLead } from '@/components/FacebookPixel';
 
 type Screen =
   | 'intro'
@@ -50,11 +51,6 @@ type AppState = {
   submitting: boolean;
   submitError: string | null;
 };
-
-// אם המשתמש סימן "רוצים פגישה" — מעבירים אותו לעמוד תודה במלוא הדף.
-// העמוד נמצא על pnielnadlan.co.il (דומיין אחר), לכן window.top.location
-// (cross-origin top navigation מותרת ב-write).
-const MEETING_THANKYOU_URL = 'https://pnielnadlan.co.il/t/';
 
 const INITIAL_STATE: AppState = {
   screen: 'intro',
@@ -218,21 +214,10 @@ export function QuestionnaireApp() {
                 const errBody = await res.json().catch(() => ({ error: 'שגיאה לא צפויה' }));
                 throw new Error(errBody.error || 'השליחה נכשלה');
               }
-              // אם המשתמש מבקש פגישה — מעבירים את כל הדף לעמוד תודה.
-              // אחרת — מציגים success screen מקומית כרגיל.
-              if (state.wantsMeeting) {
-                try {
-                  if (window.top) {
-                    window.top.location.href = MEETING_THANKYOU_URL;
-                  } else {
-                    window.location.href = MEETING_THANKYOU_URL;
-                  }
-                } catch {
-                  // אם הדפדפן חוסם cross-origin top navigation — fallback לתוך האייפריים
-                  window.location.href = MEETING_THANKYOU_URL;
-                }
-                return;
-              }
+              // ה-submit הצליח, יש לנו פרטי משתמש מלאים — ירייה של אירוע
+              // Facebook Lead לפיקסל המותקן ב-iframe. ללא רידיירקט: המשתמש
+              // נשאר ב-widget ורואה את מסך ההצלחה.
+              trackLead();
               setState((s) => ({ ...s, submitting: false, screen: 'success' }));
             } catch (err) {
               setState((s) => ({

@@ -36,10 +36,7 @@ import {
 } from '@/data/questions-q2';
 import { Q2_REPORTS } from '@/data/reports-q2';
 import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
-
-// עמוד תודה לאחר השארת פרטים + קביעת פגישה — לצורך מעקב פיקסלי הקמפיין.
-// רידיירקט מתבצע ל-window.top (ייצא מהאייפריים אם הוא בתוך אתר אחר).
-const MEETING_THANKYOU_URL = 'https://pnielnadlan.co.il/t/';
+import { trackLead } from '@/components/FacebookPixel';
 
 type BotLength = 'long' | 'short';
 
@@ -474,6 +471,9 @@ export function ChatbotApp() {
         appendBot(pickVariant(PHONE_PROMPT, aud));
         appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
           phoneRef.current = ph;
+          // המשתמש השלים את כל הפרטים (שם + מייל + טלפון) — זה ליד.
+          // ירייה של אירוע Facebook Lead מיד, ללא תלות במסלול שייבחר אחר כך.
+          trackLead();
           void showSimulatorAndContinue();
         });
       });
@@ -581,8 +581,8 @@ export function ChatbotApp() {
   };
 
   /** שליחה לשרת — מייצרת PDF, מעלה ל-Supabase, מסנכרנת ל-Smoove.
-   *  הרידיירקט עצמו לא קורה כאן (כדי שהמשתמש יספיק לקרוא את הודעות הסיום).
-   *  אחרי הסיום נקרא ל-finalizeAfterMeetingSubmit אם wantsMeeting=true.
+   *  אין רידיירקט: אירוע Facebook Lead כבר ירה ברגע איסוף הפרטים (טלפון).
+   *  המשתמש נשאר בצ'אט וקורא את הודעת הסיום בקצב שלו.
    */
   const submitToServer = async (wantsMeeting: boolean) => {
     if (submittedRef.current) return;
@@ -605,42 +605,6 @@ export function ChatbotApp() {
       });
     } catch (err) {
       console.error('[chatbot] background submit failed:', err);
-    }
-    if (wantsMeeting) {
-      finalizeAfterMeetingSubmit();
-    }
-  };
-
-  // המשתמש בחר פגישה ושלחנו את הליד. כדי לא לחתוך לו את הקריאה של הודעת
-  // הסיום, מוסיפים בועת "המשך »" — לחיצה עליה תעביר מיד לעמוד התודה
-  // (לצורך מעקב פיקסל הקמפיין). גם אם המשתמש לא לוחץ, רידיירקט-fallback
-  // מתבצע אוטומטית אחרי 12 שניות כדי להבטיח שהפיקסל יורה.
-  const redirectScheduledRef = useRef(false);
-  const finalizeAfterMeetingSubmit = () => {
-    if (redirectScheduledRef.current) return;
-    redirectScheduledRef.current = true;
-    const key = `continue-${Date.now()}`;
-    append({
-      kind: 'options',
-      key,
-      options: [{ id: 'continue', text: 'המשך »' }],
-      onPick: () => redirectToThanks(),
-    });
-    setTimeout(redirectToThanks, 12000);
-  };
-
-  const redirectedRef = useRef(false);
-  const redirectToThanks = () => {
-    if (redirectedRef.current) return;
-    redirectedRef.current = true;
-    try {
-      if (window.top && window.top !== window.self) {
-        window.top.location.href = MEETING_THANKYOU_URL;
-      } else {
-        window.location.href = MEETING_THANKYOU_URL;
-      }
-    } catch {
-      window.location.href = MEETING_THANKYOU_URL;
     }
   };
 
