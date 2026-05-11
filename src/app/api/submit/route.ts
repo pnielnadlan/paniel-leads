@@ -201,8 +201,8 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
       fullName: body.fullName.trim(),
       phone: body.phone,
       capitalRange: scoring.capitalRange,
+      hasExistingProperty: scoring.hasExistingProperty,
       reportUrl,
-      // המשתמש בחר אם הוא רוצה גם שיחת פיצוח (→ list 968406) או רק דוח.
       wantsMeeting: body.wantsMeeting,
       marketingConsent: true,
     });

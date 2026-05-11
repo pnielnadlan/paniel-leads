@@ -1,7 +1,16 @@
 // אינטגרציה עם Smoove REST API.
 // תיעוד: https://rest.smoove.io/swagger/ui/index
 //
-// אם SMOOVE_API_KEY חסר — לוג בלבד (פיתוח). ב-prod חובה.
+// כל ליד נכנס לרשימה לפי השאלון:
+//   q1 → list 1135210 (שאלון A)
+//   q2 → list 1135211 (שאלון B)
+// בנוסף לרשימה, מסומנים הערכים הבאים ב-Custom Fields:
+//   i1  — טווח הון עצמי (dropdown)
+//   i18 — האם יש דירה בבעלות? (boolean)
+//   i19 — קישור לדוח A (q1 בלבד)
+//   i20 — תיוג שאלון: "q1" / "q2"
+//   i21 — קישור לדוח B (q2 בלבד)
+//   i22 — האם מבקש שיחת פיצוח? "כן" / "לא" (dropdown)
 
 import {
   type CapitalRange,
@@ -14,54 +23,51 @@ import {
 
 const SMOOVE_API_BASE = 'https://rest.smoove.io/v1';
 const API_KEY = process.env.SMOOVE_API_KEY;
-const MEETING_LIST_ID = Number(process.env.SMOOVE_MEETING_LIST_ID ?? 968406);
 
-// Keys של ה-Custom Fields ב-Smoove. ה-IDs הם בפורמט "iN" (לא רק המספר).
-// אומתו דרך GET /v1/Account/ContactFields.
-const FIELD_CAPITAL = 'i1';        // dropDownList — "הסכום הזמין להשקעה"
-const FIELD_HAS_PROPERTY = 'i18';  // boolean — "האם יש דירה בבעלותכם?"
-const FIELD_REPORT_URL = 'i19';    // text — "קישור לדוח"
-const FIELD_QUESTIONNAIRE = 'i20'; // text — מזהה השאלון: q1 / q2
+// רשימות לפי שאלון. ה-ENV vars מאפשרים override אם בעתיד יוחלפו.
+const Q1_LIST_ID = Number(process.env.SMOOVE_Q1_LIST_ID ?? 1135210);
+const Q2_LIST_ID = Number(process.env.SMOOVE_Q2_LIST_ID ?? 1135211);
+
+// Custom Field IDs ב-Smoove (פורמט "iN", אומתו דרך GET /v1/Account/ContactFields).
+const FIELD_CAPITAL = 'i1';          // dropDownList — הסכום הזמין להשקעה
+const FIELD_HAS_PROPERTY = 'i18';    // boolean — האם יש דירה בבעלותכם?
+const FIELD_REPORT_URL_A = 'i19';    // text — קישור לדוח A (q1)
+const FIELD_QUESTIONNAIRE = 'i20';   // text — q1 / q2
+const FIELD_REPORT_URL_B = 'i21';    // text — קישור לדוח B (q2)
+const FIELD_WANTS_MEETING = 'i22';   // dropDownList — "כן" / "לא"
 
 export const smooveConfigured = Boolean(API_KEY);
 
-/** קלט אחיד לסנכרון — תומך גם ב-V1 וגם ב-V2.
- * V1: capitalRange (CapitalRange) + hasExistingProperty (boolean).
- * V2: capitalRange (Q2CapitalRange) — בלי hasExistingProperty.
- */
 export type SmoveSyncInput = {
   questionnaireId: 'q1' | 'q2';
   email: string;
   fullName: string;
   phone?: string;
-  /** טווח הון עצמי. הסוג זהה בין V1 ל-V2 — שניהם בעצם 5 ערכים זהים. */
   capitalRange?: CapitalRange | Q2CapitalRange;
-  /** קיים רק ב-V1; ב-V2 מתעלמים. */
   hasExistingProperty?: boolean;
   reportUrl: string;
-  /** האם המשתמש מבקש פגישה (V1: צ'קבוקס, V2: נגזר מתשובת ש' 13). */
+  /** האם המשתמש בחר באופציית "שיחת פיצוח" (תחת i22 + רידיירקט לעמוד תודה). */
   wantsMeeting: boolean;
   marketingConsent: boolean;
 };
 
 /**
- * מסנכרן ליד ל-Smoove: יוצר/מעדכן contact עם השדות הרלוונטיים,
- * ואם wantsMeeting — מוסיף לרשימה 968406.
+ * מסנכרן ליד ל-Smoove:
+ *   - מוסיף לרשימת השאלון המתאימה (1135210 ל-q1, 1135211 ל-q2)
+ *   - מעדכן Custom Fields: i1, i18 (אם רלוונטי), i19/i21, i20, i22
  */
 export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> {
-  // פיצול השם המלא ל-firstName / lastName בצורה פשוטה (Smoove דורש)
   const trimmed = input.fullName.trim();
   const spaceIdx = trimmed.indexOf(' ');
   const firstName = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
   const lastName = spaceIdx === -1 ? '' : trimmed.slice(spaceIdx + 1);
 
   const customFields: Record<string, string | boolean> = {
-    [FIELD_REPORT_URL]: input.reportUrl,
     [FIELD_QUESTIONNAIRE]: input.questionnaireId,
+    [FIELD_WANTS_MEETING]: input.wantsMeeting ? 'כן' : 'לא',
   };
 
-  // i1 — capital range. ה-labels זהים בין V1 ל-V2 (אותם 5 ערכים), אבל מקור
-  // ה-mapping שונה. לכן בודקים לפי questionnaireId.
+  // i1 — capital range
   if (input.capitalRange) {
     const label =
       input.questionnaireId === 'q2'
@@ -70,12 +76,22 @@ export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> 
     customFields[FIELD_CAPITAL] = label;
   }
 
-  // i18 — has property (V1 בלבד; ב-V2 לא נשלח כי השדה לא נאסף)
-  if (input.questionnaireId === 'q1' && input.hasExistingProperty !== undefined) {
+  // i18 — has property (זמין בשני השאלונים; q2 שואב מ-Q1)
+  if (input.hasExistingProperty !== undefined) {
     customFields[FIELD_HAS_PROPERTY] = input.hasExistingProperty;
   }
 
-  // נורמליזציה של מס' טלפון: נקה רווחים/מקפים, השאר רק ספרות + +
+  // i19 (q1) / i21 (q2) — קישור לדוח לפי השאלון
+  if (input.questionnaireId === 'q1') {
+    customFields[FIELD_REPORT_URL_A] = input.reportUrl;
+  } else {
+    customFields[FIELD_REPORT_URL_B] = input.reportUrl;
+  }
+
+  // רשימה לפי השאלון — תמיד מוסיפים, ללא תלות ב-wantsMeeting
+  const listId = input.questionnaireId === 'q1' ? Q1_LIST_ID : Q2_LIST_ID;
+
+  // נורמליזציה של מס' טלפון
   const cleanPhone = input.phone?.replace(/[^\d+]/g, '') || undefined;
 
   const body: Record<string, unknown> = {
@@ -83,7 +99,7 @@ export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> 
     firstName,
     lastName,
     customFields,
-    lists_ToSubscribe: input.wantsMeeting ? [MEETING_LIST_ID] : [],
+    lists_ToSubscribe: [listId],
     canReceiveEmails: input.marketingConsent,
   };
   if (cleanPhone) {

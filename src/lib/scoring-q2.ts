@@ -34,6 +34,7 @@ export type Q2ScoringResult = {
   cashflowRange?: CashflowRange;
   familyHelp?: FamilyHelp;
   motivation?: Motivation;
+  hasExistingProperty?: boolean;
 };
 
 const TIEBREAK_ORDER: RId[] = ['R3', 'R6', 'R2', 'R4', 'R5', 'R1'];
@@ -58,6 +59,7 @@ export function scoreQ2Submission(answers: Q2Answers): Q2ScoringResult {
   let cashflowRange: CashflowRange | undefined;
   let familyHelp: FamilyHelp | undefined;
   let motivation: Motivation | undefined;
+  let hasExistingProperty: boolean | undefined;
 
   for (const [qid, oid] of answers.entries()) {
     const opt = getOption(qid, oid);
@@ -71,6 +73,7 @@ export function scoreQ2Submission(answers: Q2Answers): Q2ScoringResult {
     if (opt.cashflowRange) cashflowRange = opt.cashflowRange;
     if (opt.familyHelp) familyHelp = opt.familyHelp;
     if (opt.motivation) motivation = opt.motivation;
+    if (opt.hasExistingProperty !== undefined) hasExistingProperty = opt.hasExistingProperty;
   }
 
   // ─── דריסות מאלצות ────────────────────────────────────────────────────────
@@ -79,7 +82,13 @@ export function scoreQ2Submission(answers: Q2Answers): Q2ScoringResult {
 
   // דריסה 1: Q1=D AND Q10=C → R5 בכפייה
   if (answers.get('Q1') === 'D' && answers.get('Q10') === 'C') {
-    return finalize('R5', scores, { capitalRange, cashflowRange, familyHelp, motivation });
+    return finalize('R5', scores, {
+      capitalRange,
+      cashflowRange,
+      familyHelp,
+      motivation,
+      hasExistingProperty,
+    });
   }
 
   // הכרעת מנצח טבעי לפי ניקוד + תיקו
@@ -102,7 +111,13 @@ export function scoreQ2Submission(answers: Q2Answers): Q2ScoringResult {
     }
   }
 
-  return finalize(winner, scores, { capitalRange, cashflowRange, familyHelp, motivation });
+  return finalize(winner, scores, {
+    capitalRange,
+    cashflowRange,
+    familyHelp,
+    motivation,
+    hasExistingProperty,
+  });
 }
 
 function pickWinnerByScore(scores: Record<RId, number>): RId {
@@ -132,6 +147,7 @@ function finalize(
     cashflowRange?: CashflowRange;
     familyHelp?: FamilyHelp;
     motivation?: Motivation;
+    hasExistingProperty?: boolean;
   },
 ): Q2ScoringResult {
   return {

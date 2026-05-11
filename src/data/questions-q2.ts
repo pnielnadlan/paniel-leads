@@ -46,6 +46,7 @@ export type Q2Option = {
   cashflowRange?: CashflowRange;
   familyHelp?: FamilyHelp;
   motivation?: Motivation;
+  hasExistingProperty?: boolean;
 };
 
 export type Q2Question = {
@@ -91,6 +92,7 @@ export const Q2_QUESTIONS: Q2Question[] = [
           plural: 'אין לנו עדיין נכס, רוצים להגיע לדירה ראשונה',
         },
         scores: { R1: 1 },
+        hasExistingProperty: false,
       },
       {
         id: 'B',
@@ -99,6 +101,7 @@ export const Q2_QUESTIONS: Q2Question[] = [
           plural: 'יש לנו דירת מגורים, רוצים להשקיע בנדל״ן',
         },
         scores: { R2: 1 },
+        hasExistingProperty: true,
       },
       {
         id: 'C',
@@ -107,6 +110,7 @@ export const Q2_QUESTIONS: Q2Question[] = [
           plural: 'יש לנו כבר נכסים להשקעה',
         },
         scores: { R4: 2 },
+        hasExistingProperty: true,
       },
       {
         id: 'D',
@@ -115,6 +119,7 @@ export const Q2_QUESTIONS: Q2Question[] = [
           plural: 'רק בודקים כיוון… לא החלטנו שדווקא נדל״ן',
         },
         scores: { R5: 2 },
+        hasExistingProperty: false,
       },
     ],
   },

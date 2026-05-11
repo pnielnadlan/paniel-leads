@@ -455,13 +455,9 @@ export function ChatbotApp() {
             ? pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud)
             : pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud);
         resolveItem(key, text);
-        if (id === 'with-meeting') {
-          // מסלול "פגישה" — איסוף פרטים מלא לפני הסימולטור
-          collectDetailsThenContinue();
-        } else {
-          // מסלול "רק דוח" — דילוג על הטופס; ישר לסימולטור + תמונות + הצעה-מחדש
-          void showSimulatorAndContinue();
-        }
+        // איסוף פרטים בכל מקרה — צריך מייל לשלוח את הדוח, וצריך את כולם
+        // ב-Smoove ברשימת השאלון המתאימה (גם "רק דוח") עבור A/B test וניתוח.
+        collectDetailsThenContinue();
       },
     });
   };
@@ -571,26 +567,14 @@ export function ChatbotApp() {
           ? pickVariant(REENGAGEMENT_OPTIONS.withMeeting, aud)
           : pickVariant(REENGAGEMENT_OPTIONS.reportOnly, aud);
         resolveItem(key, text);
+        // הפרטים כבר נאספו אחרי הבחירה הראשונה. כאן פשוט בוחרים את הסיום
+        // הסופי + i22 ב-Smoove (כן/לא) + רידיירקט (רק אם פגישה).
         if (isMeeting) {
-          // המשתמש שינה את דעתו — נדרש לאסוף פרטים עכשיו לפני שליחת PDF + Smoove
-          appendBot(pickVariant(NAME_PROMPT, aud));
-          appendInput('text', 'שם מלא', isNameValid, (name) => {
-            fullNameRef.current = name.trim();
-            appendBot(pickVariant(EMAIL_PROMPT, aud));
-            appendInput('email', 'name@example.com', isEmailValid, (em) => {
-              emailRef.current = em;
-              appendBot(pickVariant(PHONE_PROMPT, aud));
-              appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
-                phoneRef.current = ph;
-                appendBot(pickVariant(MEETING_CLOSING, aud));
-                void submitToServer(true);
-              });
-            });
-          });
+          appendBot(pickVariant(MEETING_CLOSING, aud));
+          void submitToServer(true);
         } else {
-          // נשאר במסלול "רק דוח" — סיום עם הפניה לאתר, ללא submit לשרת
-          // (אין PDF / Smoove כי המשתמש לא אישר ולא נתן פרטים).
           appendBot(pickVariant(REPORT_ONLY_CLOSING, aud));
+          void submitToServer(false);
         }
       },
     });
