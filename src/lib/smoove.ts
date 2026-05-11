@@ -34,7 +34,7 @@ const FIELD_HAS_PROPERTY = 'i18';    // boolean — האם יש דירה בבע�
 const FIELD_REPORT_URL_A = 'i19';    // text — קישור לדוח A (q1)
 const FIELD_QUESTIONNAIRE = 'i20';   // text — q1 / q2
 const FIELD_REPORT_URL_B = 'i21';    // text — קישור לדוח B (q2)
-const FIELD_WANTS_MEETING = 'i22';   // dropDownList — "כן" / "לא"
+const FIELD_WANTS_MEETING = 'i22';   // boolean — מעוניין בפגישה? (Smoove דורש true/false)
 
 export const smooveConfigured = Boolean(API_KEY);
 
@@ -64,7 +64,7 @@ export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> 
 
   const customFields: Record<string, string | boolean> = {
     [FIELD_QUESTIONNAIRE]: input.questionnaireId,
-    [FIELD_WANTS_MEETING]: input.wantsMeeting ? 'כן' : 'לא',
+    [FIELD_WANTS_MEETING]: input.wantsMeeting, // booleanItem — true/false
   };
 
   // i1 — capital range
