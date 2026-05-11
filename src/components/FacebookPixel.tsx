@@ -1,5 +1,7 @@
-// Facebook Pixel — אתחול גלובלי + PageView על כל טעינה של ה-widget.
-// אירועי Lead נקראים דרך window.fbq('track', 'Lead') ברגע שיש לנו פרטי משתמש.
+// Facebook Pixel — אתחול בלבד (PageView נורה ע"י הפיקסל בעמוד הנחיתה
+// של הלקוח). אירועי Lead נקראים דרך window.fbq('track', 'Lead') ברגע
+// שיש לנו פרטי משתמש. בכוונה לא יורים PageView מכאן כדי לא לכפול את
+// האירוע שכבר נורה מ-iframe-parent.
 
 import Script from 'next/script';
 
@@ -7,12 +9,11 @@ const PIXEL_ID = '453093447752844';
 
 export function FacebookPixel() {
   return (
-    <>
-      <Script
-        id="fb-pixel"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+    <Script
+      id="fb-pixel"
+      strategy="afterInteractive"
+      dangerouslySetInnerHTML={{
+        __html: `
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -22,20 +23,9 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${PIXEL_ID}');
-fbq('track', 'PageView');
-          `.trim(),
-        }}
-      />
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: 'none' }}
-          src={`https://www.facebook.com/tr?id=${PIXEL_ID}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
-    </>
+        `.trim(),
+      }}
+    />
   );
 }
 
