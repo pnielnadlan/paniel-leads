@@ -36,16 +36,33 @@ declare global {
   }
 }
 
-/** ירייה של אירוע Lead — קריאה ידנית מקוד ה-component כאשר משתמש השאיר פרטים. */
+/**
+ * ירייה של אירוע Lead — נקרא ברגע שמשתמש השאיר פרטים.
+ *
+ * אסטרטגיה דו-שלבית:
+ * 1) postMessage לאתר ההורה (Elementor) → קוד ה-snippet שם קורא ל-fbq.
+ *    זה הנכון לקמפיינים: האירוע מיוחס לדומיין של עמוד הנחיתה.
+ * 2) Fallback מקומי — נורה גם ב-iframe עצמו, למקרה שהמשתמש פתח את הצ'אט
+ *    ישירות (לא דרך iframe), או שהאתר ההורה לא הטמיע listener.
+ */
 export function trackLead(): void {
   if (typeof window === 'undefined') return;
-  if (typeof window.fbq !== 'function') {
-    console.warn('[fb-pixel] fbq not initialized yet');
-    return;
-  }
+
+  // 1) postMessage לאתר ההורה
   try {
-    window.fbq('track', 'Lead');
-  } catch (err) {
-    console.error('[fb-pixel] track Lead failed:', err);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'paniel-lead' }, '*');
+    }
+  } catch {
+    // cross-origin postMessage נכשל — נמשיך ל-fallback
+  }
+
+  // 2) Fallback: fire fbq local
+  if (typeof window.fbq === 'function') {
+    try {
+      window.fbq('track', 'Lead');
+    } catch (err) {
+      console.error('[fb-pixel] local track Lead failed:', err);
+    }
   }
 }
