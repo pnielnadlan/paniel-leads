@@ -9,30 +9,26 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Q2_QUESTIONS,
-  Q12_FA,
-  Q12_FB,
   AUDIENCE_QUESTION,
   INTRO_BUBBLES,
   START_BUTTON_LABEL,
-  SOFT_FRAMING_INTRO,
-  SOFT_FRAMING_TAIL_BY_MOTIVATION,
-  ENDING_ACTIVE,
-  ENDING_SOFT,
-  FINAL_CHOICE_PROMPT,
-  FINAL_CHOICE_OPTIONS,
-  NEXT_STEP_PROMPT,
+  WAIT_MOMENT_TEXT,
+  SIMULATOR_INTRO_PREFIX,
   MEETING_CLOSING,
-  REENGAGEMENT_PROMPT,
-  REENGAGEMENT_OPTIONS,
-  REPORT_ONLY_CLOSING,
-  ANALYZING_TEXT,
   TESTIMONIAL_IMAGES,
-  TESTIMONIALS_INTRO,
+  TESTIMONIALS_INTRO_MEETING,
+  TESTIMONIALS_INTRO_REPORT,
+  DIY_VS_PRO_MESSAGE,
+  POTENTIAL_MEETING_PROMPT,
+  HESITANT_CHOICE_OPTIONS,
+  REPORT_BEING_SENT,
+  LAST_CHANCE_PROMPT,
+  LAST_CHANCE_OPTIONS,
+  GOODBYE_REPORT_ONLY,
   pickVariant,
   type AudienceVariant,
   type OptionId,
   type Q2Question,
-  type Motivation,
 } from '@/data/questions-q2';
 import { Q2_REPORTS } from '@/data/reports-q2';
 import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
@@ -65,6 +61,7 @@ type Item =
       onSubmit: (v: string) => void;
     }
   | { kind: 'loading'; text: string; key: string }
+  | { kind: 'typing'; key: string }
   | {
       kind: 'result';
       key: string;
@@ -83,6 +80,7 @@ function isBotSide(kind: Item['kind']): boolean {
     kind === 'bot' ||
     kind === 'hero' ||
     kind === 'loading' ||
+    kind === 'typing' ||
     kind === 'result' ||
     kind === 'testimonials'
   );
@@ -96,7 +94,8 @@ export function ChatbotApp() {
   const emailRef = useRef('');
   const fullNameRef = useRef('');
   const phoneRef = useRef('');
-  const initialChoiceRef = useRef<'with-meeting' | 'report-only' | null>(null);
+  // משמר את תשובת Q12 (א/ב) להמשך החלטות בזרימה אחרי הסימולטור.
+  const q12AnswerRef = useRef<'A' | 'B' | null>(null);
   const submittedRef = useRef(false);
 
   // ─── אווטאר floating ─────────────────────────────────────────────────────
@@ -335,9 +334,8 @@ export function ChatbotApp() {
   const advanceFlow = (currentQid: string, currentOid: OptionId) => {
     const aud = audienceRef.current;
     if (!aud) return;
-    const ans = answersRef.current;
 
-    // Q11 ("מה הפחד?") הוסר — מ-Q10 קופצים ישירות ל-Q12.
+    // Q11/Q13/Q12_FA/Q12_FB הוסרו. הזרימה: Q1→…→Q10→Q12→איסוף פרטים→סימולטור.
     const linearOrder = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'];
     const idx = linearOrder.indexOf(currentQid);
     if (idx >= 0 && idx < linearOrder.length - 1) {
@@ -350,116 +348,16 @@ export function ChatbotApp() {
     }
 
     if (currentQid === 'Q12') {
-      if (currentOid === 'A') {
-        appendBot(pickVariant(Q12_FA.text, aud));
-        const key = `opt-Q12FA-${Date.now()}`;
-        append({
-          kind: 'options',
-          key,
-          options: Q12_FA.options.map((o) => ({ id: o.id, text: pickVariant(o.text, aud) })),
-          onPick: (id) => {
-            const opt = Q12_FA.options.find((o) => o.id === id)!;
-            const newAns = new Map(answersRef.current);
-            newAns.set('Q12_FA', opt.id as OptionId);
-            answersRef.current = newAns;
-            resolveItem(key, pickVariant(opt.text, aud));
-            advanceFlow('Q12_FA', opt.id as OptionId);
-          },
-        });
-      } else {
-        showSoftFraming(ans);
-      }
-      return;
-    }
-
-    if (currentQid === 'Q12_FA') {
-      if (currentOid === 'C') {
-        showSoftFraming(ans);
-      } else {
-        askQuestion('Q13', aud);
-      }
-      return;
-    }
-
-    if (currentQid === 'Q12_FB') {
-      // לפי המשתמש: Q12_FB=C כבר לא מדלג ישר על Q13 — נכנס למסלול הסיום הרך
-      // עם הצעה פרטנית לפני איסוף פרטים.
-      if (currentOid === 'C') {
-        finishConversation(false);
-      } else {
-        askQuestion('Q13', aud);
-      }
-      return;
-    }
-
-    if (currentQid === 'Q13') {
-      const isActive = currentOid === 'A' || currentOid === 'B';
-      finishConversation(isActive);
+      // שתי התשובות (א/ב) ממשיכות לאותה זרימה — איסוף פרטים. שומרים את התשובה
+      // עבור הענף שאחרי הסימולטור.
+      q12AnswerRef.current = currentOid as 'A' | 'B';
+      collectDetailsThenSimulate();
       return;
     }
   };
 
-  const showSoftFraming = (ans: Q2Answers) => {
-    const aud = audienceRef.current;
-    if (!aud) return;
-    appendBot(pickVariant(SOFT_FRAMING_INTRO, aud));
-    const q9opt = ans.get('Q9');
-    const q9 = Q2_QUESTIONS.find((q) => q.id === 'Q9')!;
-    const motivation =
-      (q9opt && q9.options.find((o) => o.id === q9opt)?.motivation) ?? 'smarter_money';
-    appendBot(pickVariant(SOFT_FRAMING_TAIL_BY_MOTIVATION[motivation as Motivation], aud));
-    appendBot(pickVariant(Q12_FB.text, aud));
-    const key = `opt-Q12FB-${Date.now()}`;
-    append({
-      kind: 'options',
-      key,
-      options: Q12_FB.options.map((o) => ({ id: o.id, text: pickVariant(o.text, aud) })),
-      onPick: (id) => {
-        const opt = Q12_FB.options.find((o) => o.id === id)!;
-        const newAns = new Map(answersRef.current);
-        newAns.set('Q12_FB', opt.id as OptionId);
-        answersRef.current = newAns;
-        resolveItem(key, pickVariant(opt.text, aud));
-        advanceFlow('Q12_FB', opt.id as OptionId);
-      },
-    });
-  };
-
-  /** אחרי כל מסלול שאלות → מציגים טקסט סיום ואז 2-אופציות (פגישה / רק דוח). */
-  const finishConversation = (active: boolean) => {
-    const aud = audienceRef.current;
-    if (!aud) return;
-    appendBot(pickVariant(active ? ENDING_ACTIVE : ENDING_SOFT, aud));
-    appendBot(pickVariant(FINAL_CHOICE_PROMPT, aud));
-    appendInitialChoice();
-  };
-
-  const appendInitialChoice = () => {
-    const aud = audienceRef.current;
-    if (!aud) return;
-    const key = `final-${Date.now()}`;
-    append({
-      kind: 'options',
-      key,
-      options: [
-        { id: 'with-meeting', text: pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud) },
-        { id: 'report-only', text: pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud) },
-      ],
-      onPick: (id) => {
-        initialChoiceRef.current = id as 'with-meeting' | 'report-only';
-        const text =
-          id === 'with-meeting'
-            ? pickVariant(FINAL_CHOICE_OPTIONS.withMeeting, aud)
-            : pickVariant(FINAL_CHOICE_OPTIONS.reportOnly, aud);
-        resolveItem(key, text);
-        // איסוף פרטים בכל מקרה — צריך מייל לשלוח את הדוח, וצריך את כולם
-        // ב-Smoove ברשימת השאלון המתאימה (גם "רק דוח") עבור A/B test וניתוח.
-        collectDetailsThenContinue();
-      },
-    });
-  };
-
-  const collectDetailsThenContinue = () => {
+  /** איסוף שם → מייל → טלפון. אחר כך trackLead ואז סימולטור. */
+  const collectDetailsThenSimulate = () => {
     const aud = audienceRef.current;
     if (!aud) return;
     appendBot(pickVariant(NAME_PROMPT, aud));
@@ -471,10 +369,9 @@ export function ChatbotApp() {
         appendBot(pickVariant(PHONE_PROMPT, aud));
         appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
           phoneRef.current = ph;
-          // המשתמש השלים את כל הפרטים (שם + מייל + טלפון) — זה ליד.
-          // ירייה של אירוע Facebook Lead מיד, ללא תלות במסלול שייבחר אחר כך.
+          // השלמת פרטים = ליד. ירייה ל-Facebook Pixel דרך postMessage להורה.
           trackLead();
-          void showSimulatorAndContinue();
+          void showSimulatorAndBranch();
         });
       });
     });
@@ -500,80 +397,137 @@ export function ChatbotApp() {
     });
   };
 
-  /** מציג בועת "מנתחים..." → תוצאה → תמונות → ענף לפי הבחירה הראשונית. */
-  const showSimulatorAndContinue = async () => {
+  /**
+   * רצף הסימולטור החדש:
+   *   1) "רק רגע" (בועה קצרה)
+   *   2) אנימציית "מקליד" (3 נקודות) למשך 2 שניות
+   *   3) בועה: "הנה דבר הסימולטור אליכם:"
+   *   4) בועת התוצאה (כותרת + תוכן)
+   *   5) ענף לפי תשובת Q12:
+   *      - Q12=א → MEETING_CLOSING + מבוא לעדויות (מסלול פגישה) + תמונות + submit(true)
+   *      - Q12=ב → DIY_VS_PRO + POTENTIAL_MEETING_PROMPT + HESITANT_CHOICE_OPTIONS
+   */
+  const showSimulatorAndBranch = async () => {
     const aud = audienceRef.current;
     if (!aud) return;
 
-    // Stage A: בועת analyzing (על המסך כ-1.5 שנייה)
-    const loadingKey = `loading-${Date.now()}`;
-    append({
-      kind: 'loading',
-      key: loadingKey,
-      text: pickVariant(ANALYZING_TEXT, aud),
-    });
-    await delay(1500);
+    // 1) "רק רגע"
+    appendBot(pickVariant(WAIT_MOMENT_TEXT, aud));
+    await delay(450);
 
-    // Stage B: ניקוד client-side + הצגת תוצאה
+    // 2) typing indicator
+    const typingKey = `typing-${Date.now()}`;
+    append({ kind: 'typing', key: typingKey });
+    await delay(2000);
+    setItems((arr) => arr.filter((it) => it.key !== typingKey));
+
+    // 3) בועה: "הנה דבר הסימולטור אליכם:"
+    appendBot(pickVariant(SIMULATOR_INTRO_PREFIX, aud));
+    await delay(400);
+
+    // 4) בועת תוצאה (ניקוד client-side)
     const result = scoreQ2Submission(answersRef.current);
     const reportContent = Q2_REPORTS[result.selectedReport];
-    setItems((arr) => arr.filter((it) => it.key !== loadingKey));
     append({
       kind: 'result',
       key: `result-${Date.now()}`,
       eyebrow: 'הניתוח שלכם מוכן',
-      title: reportContent.pdfReport.title, // הכותרת ההסברית המלאה (לא "בשלות גבוהה לפגישה")
+      title: reportContent.pdfReport.title,
       text: reportContent.simulatorOutput,
     });
+    await delay(1500);
 
-    // Stage C: הודעת מבוא לתמונות + תמונות עדויות
-    await delay(1100);
-    if (TESTIMONIAL_IMAGES.length > 0) {
-      appendBot(pickVariant(TESTIMONIALS_INTRO, aud));
-      await delay(900);
-      append({ kind: 'testimonials', key: `tst-${Date.now()}`, images: TESTIMONIAL_IMAGES });
-    }
-
-    // Stage D: ענף לפי הבחירה הראשונית
-    await delay(1100);
-    if (initialChoiceRef.current === 'with-meeting') {
-      // מסלול "פגישה": NEXT_STEP_PROMPT + MEETING_CLOSING + שליחה לשרת (פרטים כבר נאספו)
-      appendBot(pickVariant(NEXT_STEP_PROMPT, aud));
-      await delay(700);
-      appendBot(pickVariant(MEETING_CLOSING, aud));
-      void submitToServer(true);
+    // 5) ענף לפי Q12
+    if (q12AnswerRef.current === 'A') {
+      await runMeetingPath();
     } else {
-      // מסלול "רק דוח": REENGAGEMENT_PROMPT + 2 אופציות (פרטים לא נאספו עדיין)
-      appendBot(pickVariant(REENGAGEMENT_PROMPT, aud));
-      await delay(400);
-      appendReengagementOptions();
+      await runHesitantPath();
     }
   };
 
-  const appendReengagementOptions = () => {
+  /** מסלול Q12=א: תודה + מבוא לעדויות + תמונות. submit(true). */
+  const runMeetingPath = async () => {
     const aud = audienceRef.current;
     if (!aud) return;
-    const key = `reengage-${Date.now()}`;
+    appendBot(pickVariant(MEETING_CLOSING, aud));
+    await delay(900);
+    appendBot(pickVariant(TESTIMONIALS_INTRO_MEETING, aud));
+    await delay(700);
+    if (TESTIMONIAL_IMAGES.length > 0) {
+      append({ kind: 'testimonials', key: `tst-${Date.now()}`, images: TESTIMONIAL_IMAGES });
+    }
+    void submitToServer(true);
+  };
+
+  /** מסלול Q12=ב: DIY vs Pro + הצעה לפגישה + 2 אופציות. */
+  const runHesitantPath = async () => {
+    const aud = audienceRef.current;
+    if (!aud) return;
+    appendBot(pickVariant(DIY_VS_PRO_MESSAGE, aud));
+    await delay(1200);
+    appendBot(pickVariant(POTENTIAL_MEETING_PROMPT, aud));
+    await delay(400);
+    const key = `hesitant-${Date.now()}`;
     append({
       kind: 'options',
       key,
       options: [
-        { id: 'with-meeting', text: pickVariant(REENGAGEMENT_OPTIONS.withMeeting, aud) },
-        { id: 'report-only', text: pickVariant(REENGAGEMENT_OPTIONS.reportOnly, aud) },
+        { id: 'with-meeting', text: pickVariant(HESITANT_CHOICE_OPTIONS.withMeeting, aud) },
+        { id: 'report-only', text: pickVariant(HESITANT_CHOICE_OPTIONS.reportOnly, aud) },
       ],
       onPick: (id) => {
         const isMeeting = id === 'with-meeting';
         const text = isMeeting
-          ? pickVariant(REENGAGEMENT_OPTIONS.withMeeting, aud)
-          : pickVariant(REENGAGEMENT_OPTIONS.reportOnly, aud);
+          ? pickVariant(HESITANT_CHOICE_OPTIONS.withMeeting, aud)
+          : pickVariant(HESITANT_CHOICE_OPTIONS.reportOnly, aud);
         resolveItem(key, text);
-        // הפרטים כבר נאספו אחרי הבחירה הראשונה. כאן פשוט בוחרים את הסיום
-        // הסופי + i22 ב-Smoove (כן/לא) + רידיירקט (רק אם פגישה).
         if (isMeeting) {
+          void runMeetingPath();
+        } else {
+          void runReportOnlyPath();
+        }
+      },
+    });
+  };
+
+  /** מסלול "רק דוח" של HESITANT: הודעת "הדוח מופק" + מבוא תמונות + תמונות
+   *  + הצעה אחרונה (LAST_CHANCE). */
+  const runReportOnlyPath = async () => {
+    const aud = audienceRef.current;
+    if (!aud) return;
+    const reportMsg = pickVariant(REPORT_BEING_SENT, aud).replace('[[email]]', emailRef.current);
+    appendBot(reportMsg);
+    await delay(1100);
+    appendBot(pickVariant(TESTIMONIALS_INTRO_REPORT, aud));
+    await delay(600);
+    if (TESTIMONIAL_IMAGES.length > 0) {
+      append({ kind: 'testimonials', key: `tst-${Date.now()}`, images: TESTIMONIAL_IMAGES });
+    }
+    await delay(1500);
+    appendBot(pickVariant(LAST_CHANCE_PROMPT, aud));
+    await delay(400);
+    const key = `last-chance-${Date.now()}`;
+    append({
+      kind: 'options',
+      key,
+      options: [
+        { id: 'with-meeting', text: pickVariant(LAST_CHANCE_OPTIONS.withMeeting, aud) },
+        { id: 'report-only', text: pickVariant(LAST_CHANCE_OPTIONS.reportOnly, aud) },
+      ],
+      onPick: (id) => {
+        const isMeeting = id === 'with-meeting';
+        const text = isMeeting
+          ? pickVariant(LAST_CHANCE_OPTIONS.withMeeting, aud)
+          : pickVariant(LAST_CHANCE_OPTIONS.reportOnly, aud);
+        resolveItem(key, text);
+        if (isMeeting) {
+          // המשתמש שינה את דעתו ברגע האחרון — שולחים את הודעת התודה ו-submit
+          // ל-Smoove עם wantsMeeting=true.
           appendBot(pickVariant(MEETING_CLOSING, aud));
           void submitToServer(true);
         } else {
-          appendBot(pickVariant(REPORT_ONLY_CLOSING, aud));
+          // פרידה סופית, submit עם wantsMeeting=false.
+          appendBot(pickVariant(GOODBYE_REPORT_ONLY, aud));
           void submitToServer(false);
         }
       },
@@ -701,6 +655,16 @@ function renderItem(it: Item) {
           </div>
         </div>
       );
+    case 'typing':
+      return (
+        <div key={it.key} className="bot-row">
+          <div className="bubble-typing" aria-label="פניאל מקליד">
+            <span className="bubble-typing-dot" />
+            <span className="bubble-typing-dot" />
+            <span className="bubble-typing-dot" />
+          </div>
+        </div>
+      );
     case 'result':
       return (
         <div key={it.key} className="bot-row">
@@ -820,8 +784,6 @@ const PHONE_PROMPT = {
 };
 
 function findQuestion(qid: string): Q2Question {
-  if (qid === 'Q12_FA') return Q12_FA;
-  if (qid === 'Q12_FB') return Q12_FB;
   const q = Q2_QUESTIONS.find((x) => x.id === qid);
   if (!q) throw new Error(`Question ${qid} not found`);
   return q;

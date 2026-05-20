@@ -12,8 +12,6 @@
 
 import {
   Q2_QUESTIONS,
-  Q12_FA,
-  Q12_FB,
   type RId,
   type OptionId,
   type Q2Question,
@@ -39,12 +37,10 @@ export type Q2ScoringResult = {
 
 const TIEBREAK_ORDER: RId[] = ['R3', 'R6', 'R2', 'R4', 'R5', 'R1'];
 
-/** מאחד את כל השאלות המוערכות (כולל שאלות ההמשך) למילון לפי id. */
-const ALL_Q2_QUESTIONS: Map<string, Q2Question> = new Map([
-  ...Q2_QUESTIONS.map((q) => [q.id, q] as [string, Q2Question]),
-  ['Q12_FA', Q12_FA],
-  ['Q12_FB', Q12_FB],
-]);
+/** מאחד את כל השאלות המוערכות למילון לפי id. */
+const ALL_Q2_QUESTIONS: Map<string, Q2Question> = new Map(
+  Q2_QUESTIONS.map((q) => [q.id, q] as [string, Q2Question]),
+);
 
 function getOption(qid: string, oid: OptionId): Q2Option | undefined {
   const q = ALL_Q2_QUESTIONS.get(qid);

@@ -399,6 +399,39 @@
   cursor: not-allowed;
 }
 
+/* ─── בועת "פניאל מקליד..." — שלוש נקודות מהבהבות לפני סימולטור ─── */
+.bubble-typing {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 22px;
+  background: var(--bot-bg);
+  border: 3px solid var(--bot-border);
+  border-radius: var(--bubble-radius);
+  width: max-content;
+  flex: 0 0 auto;
+  animation: bubble-pop-short var(--anim-short) cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.bubble-typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  opacity: 0.35;
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+.bubble-typing-dot:nth-child(1) { animation-delay: 0s; }
+.bubble-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.bubble-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
 /* ─── בועת "טוען..." ─── */
 .bubble-loading {
   flex: 0 1 auto;
