@@ -14,6 +14,8 @@ import {
   START_BUTTON_LABEL,
   WAIT_MOMENT_TEXT,
   SIMULATOR_INTRO_PREFIX,
+  MEETING_LEAD_IN,
+  REASSURE_HESITANT,
   MEETING_CLOSING,
   TESTIMONIAL_IMAGES,
   TESTIMONIALS_INTRO_MEETING,
@@ -351,7 +353,14 @@ export function ChatbotApp() {
       // שתי התשובות (א/ב) ממשיכות לאותה זרימה — איסוף פרטים. שומרים את התשובה
       // עבור הענף שאחרי הסימולטור.
       q12AnswerRef.current = currentOid as 'A' | 'B';
-      collectDetailsThenSimulate();
+      // הודעת מבוא רכה לפני בקשת השם — שונה לפי תשובת Q12:
+      // - א ("מבין/ה שזה מה שנצרך") → "איזה יופי! מיד נציע לך משהו מעניין..."
+      // - ב ("מלחיץ אותי אם אני במקום הנכון") → "זה בסדר, כבר נגיע לזה..."
+      const leadIn = currentOid === 'A' ? MEETING_LEAD_IN : REASSURE_HESITANT;
+      appendBot(pickVariant(leadIn, aud));
+      // delay קצר ואז ממשיכים לאיסוף הפרטים, כך שהמשתמש יראה את ההודעה לפני
+      // שמופיעה השאלה.
+      setTimeout(() => collectDetailsThenSimulate(), 600);
       return;
     }
   };
