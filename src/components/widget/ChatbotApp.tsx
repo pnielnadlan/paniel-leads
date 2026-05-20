@@ -454,10 +454,18 @@ export function ChatbotApp() {
     }
   };
 
-  /** מסלול Q12=א: תודה + מבוא לעדויות + תמונות. submit(true). */
-  const runMeetingPath = async () => {
+  /** מסלול Q12=א: תודה + מבוא לעדויות + תמונות. submit(true).
+   *  כשמגיעים ישירות אחרי בועת הדוח (justAfterReport=true) — משהים 4 שניות
+   *  עם אנימציית "מקליד" כדי לתת זמן לקריאה לפני הודעת הסיום. */
+  const runMeetingPath = async (justAfterReport = true) => {
     const aud = audienceRef.current;
     if (!aud) return;
+    if (justAfterReport) {
+      const typingKey = `typing-meeting-${Date.now()}`;
+      append({ kind: 'typing', key: typingKey });
+      await delay(4000);
+      setItems((arr) => arr.filter((it) => it.key !== typingKey));
+    }
     appendBot(pickVariant(MEETING_CLOSING, aud));
     await delay(900);
     appendBot(pickVariant(TESTIMONIALS_INTRO_MEETING, aud));
@@ -497,7 +505,8 @@ export function ChatbotApp() {
           : pickVariant(HESITANT_CHOICE_OPTIONS.reportOnly, aud);
         resolveItem(key, text);
         if (isMeeting) {
-          void runMeetingPath();
+          // המשתמש כבר קרא את בועת הדוח + הודעת DIY — לא צריך עוד 4 שניות
+          void runMeetingPath(false);
         } else {
           void runReportOnlyPath();
         }
