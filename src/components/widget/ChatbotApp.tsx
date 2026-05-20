@@ -472,6 +472,12 @@ export function ChatbotApp() {
   const runHesitantPath = async () => {
     const aud = audienceRef.current;
     if (!aud) return;
+    // השהייה של 4 שניות עם אנימציית "מקליד" — נותן למשתמש זמן לקרוא את
+    // בועת הדוח לפני שמופיע ההמשך, ובאותה נשימה מסמן שעוד יש לבוא.
+    const typingKey = `typing-diy-${Date.now()}`;
+    append({ kind: 'typing', key: typingKey });
+    await delay(4000);
+    setItems((arr) => arr.filter((it) => it.key !== typingKey));
     appendBot(pickVariant(DIY_VS_PRO_MESSAGE, aud));
     await delay(1200);
     appendBot(pickVariant(POTENTIAL_MEETING_PROMPT, aud));
