@@ -103,7 +103,9 @@ export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> 
     canReceiveEmails: input.marketingConsent,
   };
   if (cleanPhone) {
-    body.mobile = cleanPhone;
+    // השדה הרשמי ב-Smoove הוא cellPhone (אומת מול GET /Contacts schema).
+    // קודם שלחנו "mobile" שלא קיים בכלל אצלם — הוא נזרק בשקט וטלפונים אבדו.
+    body.cellPhone = cleanPhone;
   }
 
   if (!API_KEY) {

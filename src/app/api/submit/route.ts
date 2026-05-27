@@ -11,6 +11,7 @@ import { buildPdfHtml } from '@/lib/pdf-html';
 import { generatePdf } from '@/lib/pdf-generator';
 import { uploadReportPdf } from '@/lib/supabase';
 import { syncContactToSmoove } from '@/lib/smoove';
+import { insertLead, markLeadSynced, markLeadFailed } from '@/lib/leads-db';
 import { type OptionId } from '@/data/questions';
 import { scoreQ2Submission, type Q2Answers } from '@/lib/scoring-q2';
 import { renderQ2Report } from '@/lib/render-q2';
@@ -125,6 +126,21 @@ async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { 
     return NextResponse.json({ error: 'העלאת הדוח נכשלה' }, { status: 500 });
   }
 
+  // Safety net: שומרים את הליד ב-Supabase לפני שמנסים Smoove.
+  // גם אם הסנכרון נופל — יש לנו את הליד מקומית ונוכל לסנכרן בדיעבד.
+  const leadId = await insertLead({
+    questionnaire_id: 'q1',
+    email: body.email,
+    full_name: body.fullName.trim(),
+    phone: body.phone,
+    wants_meeting: body.wantsMeeting,
+    answers: body.answers as unknown as Record<string, string>,
+    report_id: scoring.reportId,
+    report_url: reportUrl,
+    capital_range: scoring.capitalRange,
+    has_existing_property: scoring.hasExistingProperty,
+  });
+
   try {
     await syncContactToSmoove({
       questionnaireId: 'q1',
@@ -137,8 +153,11 @@ async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { 
       wantsMeeting: body.wantsMeeting,
       marketingConsent: body.marketingConsent ?? true,
     });
+    if (leadId) await markLeadSynced(leadId);
   } catch (err) {
-    console.error('[submit:q1] Smoove sync failed:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[submit:q1] Smoove sync failed:', msg);
+    if (leadId) await markLeadFailed(leadId, msg);
   }
 
   return NextResponse.json({
@@ -194,6 +213,21 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
     return NextResponse.json({ error: 'העלאת הדוח נכשלה' }, { status: 500 });
   }
 
+  // Safety net: שומרים את הליד ב-Supabase לפני שמנסים Smoove.
+  const leadId = await insertLead({
+    questionnaire_id: 'q2',
+    audience: body.audience,
+    email: body.email,
+    full_name: body.fullName.trim(),
+    phone: body.phone,
+    wants_meeting: body.wantsMeeting,
+    answers: body.answers as unknown as Record<string, string>,
+    report_id: scoring.selectedReport,
+    report_url: reportUrl,
+    capital_range: scoring.capitalRange,
+    has_existing_property: scoring.hasExistingProperty,
+  });
+
   try {
     await syncContactToSmoove({
       questionnaireId: 'q2',
@@ -206,8 +240,11 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
       wantsMeeting: body.wantsMeeting,
       marketingConsent: true,
     });
+    if (leadId) await markLeadSynced(leadId);
   } catch (err) {
-    console.error('[submit:q2] Smoove sync failed:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[submit:q2] Smoove sync failed:', msg);
+    if (leadId) await markLeadFailed(leadId, msg);
   }
 
   return NextResponse.json({
