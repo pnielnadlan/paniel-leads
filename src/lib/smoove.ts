@@ -57,10 +57,14 @@ export type SmoveSyncInput = {
  *   - מעדכן Custom Fields: i1, i18 (אם רלוונטי), i19/i21, i20, i22
  */
 export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> {
+  // פיצול שם:
+  //   "ישראל ישראלי" → firstName="ישראל",  lastName="ישראלי"
+  //   "ישראל"        → firstName="ישראל",  lastName="ישראל"  (כדי לא להשאיר ריק
+  //                                                            ולשבור אוטומציות בסמוב)
   const trimmed = input.fullName.trim();
   const spaceIdx = trimmed.indexOf(' ');
   const firstName = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
-  const lastName = spaceIdx === -1 ? '' : trimmed.slice(spaceIdx + 1);
+  const lastName = spaceIdx === -1 ? trimmed : trimmed.slice(spaceIdx + 1);
 
   const customFields: Record<string, string | boolean> = {
     [FIELD_QUESTIONNAIRE]: input.questionnaireId,
