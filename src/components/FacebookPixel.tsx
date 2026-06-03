@@ -39,25 +39,31 @@ declare global {
 /**
  * ירייה של אירוע Lead — נקרא ברגע שמשתמש השאיר פרטים.
  *
- * אסטרטגיה דו-שלבית:
- * 1) postMessage לאתר ההורה (Elementor) → קוד ה-snippet שם קורא ל-fbq.
- *    זה הנכון לקמפיינים: האירוע מיוחס לדומיין של עמוד הנחיתה.
- * 2) Fallback מקומי — נורה גם ב-iframe עצמו, למקרה שהמשתמש פתח את הצ'אט
- *    ישירות (לא דרך iframe), או שהאתר ההורה לא הטמיע listener.
+ * חשוב: התרחיש הרגיל הוא iframe מוטמע ב-pnielnadlan.co.il. ה-snippet
+ * ב-Elementor של ההורה מקבל את postMessage ויורה fbq על הדומיין הנכון
+ * (מיוחס לקמפיין). לכן ה-iframe עצמו לא יורה fbq — אחרת זה היה כפול
+ * ב-Meta (גם ההורה גם ה-iframe, ושני האירועים מיוחסים לדומיין ההורה
+ * כי ה-Referer של בקשות ה-fbq מתוך iframe = ה-URL של ההורה).
+ *
+ * רק במקרה הנדיר שמישהו פותח את הצ'אט ישירות (לא דרך iframe) — נורה
+ * מקומית כ-fallback.
  */
 export function trackLead(): void {
   if (typeof window === 'undefined') return;
 
-  // 1) postMessage לאתר ההורה
-  try {
-    if (window.parent && window.parent !== window) {
+  const isInIframe = window.parent && window.parent !== window;
+
+  if (isInIframe) {
+    // ההורה אחראי לירייה — אנחנו רק שולחים postMessage
+    try {
       window.parent.postMessage({ type: 'paniel-lead' }, '*');
+    } catch (err) {
+      console.error('[fb-pixel] postMessage to parent failed:', err);
     }
-  } catch {
-    // cross-origin postMessage נכשל — נמשיך ל-fallback
+    return;
   }
 
-  // 2) Fallback: fire fbq local
+  // standalone: יורים מקומית
   if (typeof window.fbq === 'function') {
     try {
       window.fbq('track', 'Lead');
