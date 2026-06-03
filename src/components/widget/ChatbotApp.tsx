@@ -378,8 +378,10 @@ export function ChatbotApp() {
         appendBot(pickVariant(PHONE_PROMPT, aud));
         appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
           phoneRef.current = ph;
-          // השלמת פרטים = ליד. ירייה ל-Facebook Pixel דרך postMessage להורה.
-          trackLead();
+          // הערה: trackLead הוזז ל-submitToServer (אחרי שה-API החזיר הצלחה).
+          // קודם זה ירה כאן ברגע הזנת הטלפון — אבל אם המשתמש בלה במהלך
+          // הסימולטור/ה-Q12 והטאב נסגר, נוצרו Lead ב-Meta בלי רישום בסמוב.
+          // עכשיו Meta + Smoove + Supabase מתואמים.
           void showSimulatorAndBranch();
         });
       });
@@ -568,7 +570,7 @@ export function ChatbotApp() {
     const aud = audienceRef.current;
     if (!aud) return;
     try {
-      await fetch('/api/submit', {
+      const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -581,6 +583,13 @@ export function ChatbotApp() {
           wantsMeeting,
         }),
       });
+      // Lead נורה רק אחרי הצלחת submit — Meta יספור רק לידים אמיתיים
+      // שגם הגיעו לסמוב, ולא משתמשים שבלו במהלך הסימולטור/Q12.
+      if (res.ok) {
+        trackLead();
+      } else {
+        console.error('[chatbot] submit returned non-OK:', res.status);
+      }
     } catch (err) {
       console.error('[chatbot] background submit failed:', err);
     }
