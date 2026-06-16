@@ -75,7 +75,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const bg = clampHex(searchParams.get('bg'), '#ffffff');
-  const boxColor = clampHex(searchParams.get('box'), '#011d30');
+  const boxColor = clampHex(searchParams.get('box'), '#3184ff');
   const digitColor = clampHex(searchParams.get('digit'), '#ffffff');
   const labelColor = clampHex(searchParams.get('label'), '#00cccc');
   const showLabels = searchParams.get('labels') !== '0';
@@ -85,7 +85,7 @@ export async function GET(request: Request): Promise<Response> {
   const remainingNow = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
 
   // מימדים ופריסה
-  const labelH = showLabels ? 22 : 0;
+  const labelH = showLabels ? 38 : 0;
   const boxW = 104;
   const boxH = 84;
   const gap = 18; // רווח בין קופסאות (כולל מקום למפריד ":")
@@ -132,7 +132,7 @@ export async function GET(request: Request): Promise<Response> {
       // תווית
       if (showLabels) {
         ctx.fillStyle = labelColor;
-        ctx.font = `16px ${FONT_FAMILY}`;
+        ctx.font = `26px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(units[i].label, x + boxW / 2, y + boxH + labelH / 2 + 1);
