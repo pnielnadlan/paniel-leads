@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.0",
     "@sparticuz/chromium": "^148.0.0",
     "@supabase/supabase-js": "^2.105.3",
     "canvas-confetti": "^1.9.4",
+    "gifenc": "^1.0.3",
     "gray-matter": "^4.0.3",
     "marked": "^18.0.3",
     "next": "16.2.5",
