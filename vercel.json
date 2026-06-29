@@ -5,5 +5,11 @@
       "maxDuration": 60,
       "memory": 1769
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/keepalive",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }
