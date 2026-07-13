@@ -25,7 +25,10 @@ type V1Payload = {
   questionnaireId?: 'q1';
   answers: Record<string, OptionId>;
   email: string;
-  fullName: string;
+  /** V1 עדיין שולח fullName יחיד — נחלוץ ל-first/last בשרת. */
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   wantsMeeting: boolean;
   wantsReport: boolean;
@@ -37,8 +40,14 @@ type V2Payload = {
   audience: AudienceVariant;
   answers: Record<string, Q2OptionId>;
   email: string;
-  fullName: string;
+  /** שם פרטי — נאסף בשלב נפרד ומועבר ישירות ל-Smoove ללא פיצול. */
+  firstName: string;
+  /** שם משפחה — נאסף בשלב נפרד. אם המשתמש מזין שם פרטי בלבד, זה עלול
+   *  להיות ריק — נטפל ב-fallback בהמשך. */
+  lastName: string;
   phone: string;
+  /** ל-backward compat: אם client ישן שולח fullName במקום firstName/lastName. */
+  fullName?: string;
   /** המשתמש בחר באופציה "+ שיחת פיצוח" בסוף השאלון (במקום "רק דוח"). */
   wantsMeeting: boolean;
 };
@@ -65,8 +74,15 @@ export async function POST(
   if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
     return NextResponse.json({ error: 'מייל לא תקין' }, { status: 400 });
   }
-  if (!body.fullName || body.fullName.trim().length < 2) {
-    return NextResponse.json({ error: 'שם מלא נדרש' }, { status: 400 });
+  // תמיכה בשני פורמטים:
+  //   חדש: firstName + lastName (V2 chatbot after split)
+  //   ישן: fullName (V1 form, או clients שעוד לא רוננו)
+  const hasNewName =
+    'firstName' in body && typeof body.firstName === 'string' && body.firstName.trim().length >= 2;
+  const hasOldName =
+    'fullName' in body && typeof body.fullName === 'string' && body.fullName.trim().length >= 2;
+  if (!hasNewName && !hasOldName) {
+    return NextResponse.json({ error: 'שם נדרש' }, { status: 400 });
   }
   if (!body.answers || typeof body.answers !== 'object') {
     return NextResponse.json({ error: 'תשובות חסרות' }, { status: 400 });
@@ -88,6 +104,9 @@ async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { 
     answers.set(Number(k), v);
   }
 
+  // חילוץ שם — תמיכה בשני פורמטים.
+  const { firstName, lastName, fullName } = resolveNames(body);
+
   let scoring;
   try {
     scoring = scoreSubmission(answers);
@@ -100,7 +119,7 @@ async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { 
 
   const rendered = renderTemplate({
     reportId: scoring.reportId,
-    fullName: body.fullName.trim(),
+    fullName,
     capitalRange: scoring.capitalRange,
     hasExistingProperty: scoring.hasExistingProperty,
   });
@@ -131,7 +150,9 @@ async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { 
   const leadId = await insertLead({
     questionnaire_id: 'q1',
     email: body.email,
-    full_name: body.fullName.trim(),
+    full_name: fullName,
+    first_name: firstName,
+    last_name: lastName,
     phone: body.phone,
     wants_meeting: body.wantsMeeting,
     answers: body.answers as unknown as Record<string, string>,
@@ -145,7 +166,8 @@ async function handleV1(body: V1Payload): Promise<NextResponse<SubmitResult | { 
     await syncContactToSmoove({
       questionnaireId: 'q1',
       email: body.email,
-      fullName: body.fullName.trim(),
+      firstName,
+      lastName,
       phone: body.phone,
       capitalRange: scoring.capitalRange,
       hasExistingProperty: scoring.hasExistingProperty,
@@ -177,6 +199,9 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
     answers.set(k, v);
   }
 
+  // חילוץ שם — תמיכה בשני פורמטים (חדש: firstName+lastName / ישן: fullName).
+  const { firstName, lastName, fullName } = resolveNames(body);
+
   let scoring;
   try {
     scoring = scoreQ2Submission(answers);
@@ -189,7 +214,8 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
 
   const rendered = renderQ2Report({
     reportId: scoring.selectedReport,
-    fullName: body.fullName.trim(),
+    fullName,
+    firstName,
   });
 
   let pdfBuffer: Buffer;
@@ -218,7 +244,9 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
     questionnaire_id: 'q2',
     audience: body.audience,
     email: body.email,
-    full_name: body.fullName.trim(),
+    full_name: fullName,
+    first_name: firstName,
+    last_name: lastName,
     phone: body.phone,
     wants_meeting: body.wantsMeeting,
     answers: body.answers as unknown as Record<string, string>,
@@ -232,7 +260,8 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
     await syncContactToSmoove({
       questionnaireId: 'q2',
       email: body.email,
-      fullName: body.fullName.trim(),
+      firstName,
+      lastName,
       phone: body.phone,
       capitalRange: scoring.capitalRange,
       hasExistingProperty: scoring.hasExistingProperty,
@@ -252,4 +281,45 @@ async function handleV2(body: V2Payload): Promise<NextResponse<SubmitResult | { 
     reportId: scoring.selectedReport,
     reportUrl,
   });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// עזרים
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * מחלץ שם פרטי + שם משפחה + שם מלא מה-payload, תומך בשני פורמטים:
+ *   חדש: firstName + lastName (V2 chatbot אחרי הפיצול)
+ *   ישן: fullName יחיד (V1 form או clients ישנים)
+ *
+ * לעולם לא מחזיר lastName ריק — אם המשתמש מזין שם פרטי בלבד,
+ * lastName נופל חזרה ל-firstName (למנוע שבירת אוטומציות בסמוב שמפנות
+ * ל-{{lastName}}).
+ */
+function resolveNames(body: {
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+}): { firstName: string; lastName: string; fullName: string } {
+  const first = (body.firstName ?? '').trim();
+  const last = (body.lastName ?? '').trim();
+  if (first) {
+    // פורמט חדש (יש לפחות שם פרטי)
+    const lastNameOut = last || first;
+    return {
+      firstName: first,
+      lastName: lastNameOut,
+      fullName: last ? `${first} ${last}` : first,
+    };
+  }
+  // פורמט ישן — מפצלים את fullName לפי הרווח הראשון
+  const trimmed = (body.fullName ?? '').trim();
+  const spaceIdx = trimmed.indexOf(' ');
+  const firstFromFull = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
+  const lastFromFull = spaceIdx === -1 ? trimmed : trimmed.slice(spaceIdx + 1);
+  return {
+    firstName: firstFromFull,
+    lastName: lastFromFull || firstFromFull,
+    fullName: trimmed,
+  };
 }

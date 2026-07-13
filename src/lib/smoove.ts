@@ -41,7 +41,12 @@ export const smooveConfigured = Boolean(API_KEY);
 export type SmoveSyncInput = {
   questionnaireId: 'q1' | 'q2';
   email: string;
-  fullName: string;
+  /** שם פרטי — נאסף בשדה נפרד בשאלון. */
+  firstName: string;
+  /** שם משפחה — נאסף בשדה נפרד. אם המשתמש נתן רק שם פרטי, הצד הקורא
+   *  אחראי להעביר lastName=firstName כ-fallback (Smoove אוטומציות עם
+   *  {{lastName}} נשברות על ערך ריק). */
+  lastName: string;
   phone?: string;
   capitalRange?: CapitalRange | Q2CapitalRange;
   hasExistingProperty?: boolean;
@@ -57,14 +62,8 @@ export type SmoveSyncInput = {
  *   - מעדכן Custom Fields: i1, i18 (אם רלוונטי), i19/i21, i20, i22
  */
 export async function syncContactToSmoove(input: SmoveSyncInput): Promise<void> {
-  // פיצול שם:
-  //   "ישראל ישראלי" → firstName="ישראל",  lastName="ישראלי"
-  //   "ישראל"        → firstName="ישראל",  lastName="ישראל"  (כדי לא להשאיר ריק
-  //                                                            ולשבור אוטומציות בסמוב)
-  const trimmed = input.fullName.trim();
-  const spaceIdx = trimmed.indexOf(' ');
-  const firstName = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
-  const lastName = spaceIdx === -1 ? trimmed : trimmed.slice(spaceIdx + 1);
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim() || firstName;
 
   const customFields: Record<string, string | boolean> = {
     [FIELD_QUESTIONNAIRE]: input.questionnaireId,

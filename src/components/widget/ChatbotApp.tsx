@@ -94,7 +94,8 @@ export function ChatbotApp() {
   const answersRef = useRef<Q2Answers>(new Map());
   const audienceRef = useRef<AudienceVariant | null>(null);
   const emailRef = useRef('');
-  const fullNameRef = useRef('');
+  const firstNameRef = useRef('');
+  const lastNameRef = useRef('');
   const phoneRef = useRef('');
   // משמר את תשובת Q12 (א/ב) להמשך החלטות בזרימה אחרי הסימולטור.
   const q12AnswerRef = useRef<'A' | 'B' | null>(null);
@@ -369,20 +370,24 @@ export function ChatbotApp() {
   const collectDetailsThenSimulate = () => {
     const aud = audienceRef.current;
     if (!aud) return;
-    appendBot(pickVariant(NAME_PROMPT, aud));
-    appendInput('text', 'שם מלא', isNameValid, (name) => {
-      fullNameRef.current = name.trim();
-      appendBot(pickVariant(EMAIL_PROMPT, aud));
-      appendInput('email', 'name@example.com', isEmailValid, (em) => {
-        emailRef.current = em;
-        appendBot(pickVariant(PHONE_PROMPT, aud));
-        appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
-          phoneRef.current = ph;
-          // הערה: trackLead הוזז ל-submitToServer (אחרי שה-API החזיר הצלחה).
-          // קודם זה ירה כאן ברגע הזנת הטלפון — אבל אם המשתמש בלה במהלך
-          // הסימולטור/ה-Q12 והטאב נסגר, נוצרו Lead ב-Meta בלי רישום בסמוב.
-          // עכשיו Meta + Smoove + Supabase מתואמים.
-          void showSimulatorAndBranch();
+    appendBot(pickVariant(FIRST_NAME_PROMPT, aud));
+    appendInput('text', 'שם פרטי', isNameValid, (first) => {
+      firstNameRef.current = first.trim();
+      appendBot(pickVariant(LAST_NAME_PROMPT, aud));
+      appendInput('text', 'שם משפחה', isNameValid, (last) => {
+        lastNameRef.current = last.trim();
+        appendBot(pickVariant(EMAIL_PROMPT, aud));
+        appendInput('email', 'name@example.com', isEmailValid, (em) => {
+          emailRef.current = em;
+          appendBot(pickVariant(PHONE_PROMPT, aud));
+          appendInput('tel', '050-1234567', isPhoneValid, (ph) => {
+            phoneRef.current = ph;
+            // הערה: trackLead הוזז ל-submitToServer (אחרי שה-API החזיר הצלחה).
+            // קודם זה ירה כאן ברגע הזנת הטלפון — אבל אם המשתמש בלה במהלך
+            // הסימולטור/ה-Q12 והטאב נסגר, נוצרו Lead ב-Meta בלי רישום בסמוב.
+            // עכשיו Meta + Smoove + Supabase מתואמים.
+            void showSimulatorAndBranch();
+          });
         });
       });
     });
@@ -578,7 +583,8 @@ export function ChatbotApp() {
           audience: aud,
           answers: Object.fromEntries(answersRef.current),
           email: emailRef.current,
-          fullName: fullNameRef.current,
+          firstName: firstNameRef.current,
+          lastName: lastNameRef.current,
           phone: phoneRef.current,
           wantsMeeting,
         }),
@@ -806,9 +812,14 @@ const EMAIL_PROMPT = {
   plural: 'מה כתובת המייל שלכם?',
 };
 
-const NAME_PROMPT = {
-  singular: 'מה שמך המלא?',
-  plural: 'מה שמכם המלא?',
+const FIRST_NAME_PROMPT = {
+  singular: 'מה שמך הפרטי?',
+  plural: 'מה השם הפרטי שלכם?',
+};
+
+const LAST_NAME_PROMPT = {
+  singular: 'ומה שם המשפחה?',
+  plural: 'ומה שם המשפחה שלכם?',
 };
 
 const PHONE_PROMPT = {

@@ -40,10 +40,23 @@ export async function POST(request: Request): Promise<NextResponse<ResyncReport 
 
   for (const lead of failed) {
     try {
+      // אם יש first_name/last_name (רשומות אחרי פיצול השם) — נשתמש בהם.
+      // אחרת נחלץ מ-full_name לפי הרווח הראשון.
+      let firstName = lead.first_name?.trim() ?? '';
+      let lastName = lead.last_name?.trim() ?? '';
+      if (!firstName) {
+        const trimmed = (lead.full_name ?? '').trim();
+        const spaceIdx = trimmed.indexOf(' ');
+        firstName = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
+        lastName = spaceIdx === -1 ? trimmed : trimmed.slice(spaceIdx + 1);
+      }
+      if (!lastName) lastName = firstName;
+
       await syncContactToSmoove({
         questionnaireId: lead.questionnaire_id,
         email: lead.email,
-        fullName: lead.full_name,
+        firstName,
+        lastName,
         phone: lead.phone,
         capitalRange: lead.capital_range as CapitalRange | Q2CapitalRange | undefined,
         hasExistingProperty: lead.has_existing_property,

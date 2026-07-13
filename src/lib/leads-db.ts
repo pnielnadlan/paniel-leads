@@ -11,6 +11,8 @@
 //     audience text,                             -- 'single' | 'couple' | 'family' (q2 only)
 //     email text not null,
 //     full_name text not null,
+//     first_name text,                           -- נוסף ב-2026-07 יחד עם פיצול השם
+//     last_name text,
 //     phone text,
 //     wants_meeting boolean not null default false,
 //     answers jsonb not null,
@@ -24,6 +26,10 @@
 //   );
 //   create index leads_smoove_status_idx on public.leads (smoove_status);
 //   create index leads_email_idx on public.leads (email);
+//
+// Migration להוספת first_name + last_name לטבלה קיימת:
+//   alter table public.leads add column if not exists first_name text;
+//   alter table public.leads add column if not exists last_name text;
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -46,6 +52,8 @@ export type LeadRow = {
   audience?: string;
   email: string;
   full_name: string;
+  first_name?: string;
+  last_name?: string;
   phone?: string;
   wants_meeting: boolean;
   answers: Record<string, string>;

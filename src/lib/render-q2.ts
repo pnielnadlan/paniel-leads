@@ -7,7 +7,11 @@ import { Q2_REPORT_NAMES, type RId } from '../data/questions-q2.ts';
 
 export type Q2RenderInput = {
   reportId: RId;
+  /** שם מלא — משמש בכותרת ה-PDF ("דוח אישי עבור..."). */
   fullName: string;
+  /** שם פרטי בלבד — משמש להחלפת [[שם פרטי]] בתוך גוף הדוח.
+   *  אם לא סופק, נחלץ מ-fullName כ-fallback. */
+  firstName?: string;
 };
 
 export type Q2RenderOutput = {
@@ -21,18 +25,21 @@ export type Q2RenderOutput = {
   simulatorOutput: string;
 };
 
-function substitute(text: string, vars: { fullName: string }): string {
-  return text.replaceAll('[[שם פרטי]]', vars.fullName);
+function substitute(text: string, vars: { firstName: string }): string {
+  return text.replaceAll('[[שם פרטי]]', vars.firstName);
 }
 
 export function renderQ2Report(input: Q2RenderInput): Q2RenderOutput {
   const report = Q2_REPORTS[input.reportId];
   const fullName = input.fullName.trim();
+  // אם לא סופק שם פרטי — מחלצים אותו מהשם המלא (לפני הרווח הראשון).
+  const firstName =
+    input.firstName?.trim() || fullName.split(' ')[0] || fullName;
 
-  const body = substitute(report.pdfReport.body, { fullName });
+  const body = substitute(report.pdfReport.body, { firstName });
   const bodyHtml = marked.parse(body, { async: false }) as string;
 
-  const simulatorOutput = substitute(report.simulatorOutput, { fullName });
+  const simulatorOutput = substitute(report.simulatorOutput, { firstName });
 
   return {
     reportId: input.reportId,
